@@ -18,7 +18,7 @@ public record Donacion(
         int cantidad,
         String estado,              // INGRESADA, ACEPTADA, CONQUEJA
         Instant fechaIngreso,
-        List<Queja> quejas,
+        Queja queja,
         Instant ultimaActualizacion
 ) {
     public record Queja(String quejaId, LocalDate fecha, String descripcion) {}
