@@ -44,6 +44,11 @@ public class DonadorDoc {
   List<MisionHistoricaDTO> misionesCompletadasHistorial = new ArrayList<>();
 
 
+  // Insignias de un Donador
+  private List<String> insignias = new ArrayList<>();
+
+
+
 
   public DonadorDoc() {}
 

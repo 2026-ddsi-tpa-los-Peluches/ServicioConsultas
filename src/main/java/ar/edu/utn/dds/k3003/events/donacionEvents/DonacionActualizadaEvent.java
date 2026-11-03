@@ -1,4 +1,4 @@
-package ar.edu.utn.dds.k3003.events.donacionEvent;
+package ar.edu.utn.dds.k3003.events.donacionEvents;
 
 import ar.edu.utn.dds.k3003.documentos.DonacionDoc;
 

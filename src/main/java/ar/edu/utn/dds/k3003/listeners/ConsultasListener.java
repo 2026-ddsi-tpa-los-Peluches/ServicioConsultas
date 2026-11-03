@@ -2,10 +2,12 @@ package ar.edu.utn.dds.k3003.listeners;
 
 import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.documentos.*;
-import ar.edu.utn.dds.k3003.events.asignacionEvent.AsignacionActualizadaEvent;
+import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoActualizadoEvent;
-import ar.edu.utn.dds.k3003.events.donacionEvent.DonacionActualizadaEvent;
+import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
+import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
+import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.stockEvents.StockActualizadoEvent;
 import ar.edu.utn.dds.k3003.service.Actualizador;
@@ -20,7 +22,6 @@ import org.springframework.stereotype.Component;
 
 
 import java.util.List;
-import java.util.Map;
 
 @Component
 public class ConsultasListener {
@@ -96,7 +97,7 @@ public class ConsultasListener {
     }
 
     // 3) cambiar progreso del donador
-    @RabbitListener(queues = "consultas.mision-progreso")
+    @RabbitListener(queues = "consultas.mision-donador-progreso")
     public void onProgresoActualizado(MisionDonadorProgresoActualizadoEvent e) {
         Query query = new Query(Criteria.where("donadorId").is(e.donadorId())
                 .and("misionActual.misionId").is(e.misionId()));
@@ -108,7 +109,7 @@ public class ConsultasListener {
     }
 
     // 4) cambiar mision del donador
-    @RabbitListener(queues = "consultas.mision-completada")
+    @RabbitListener(queues = "consultas.mision-donador-completada")
     public void onMisionCompletada(MisionDonadorCompletadaEvent e) {
         // 1. Buscamos al donador por su ID
         Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
@@ -124,7 +125,7 @@ public class ConsultasListener {
         mongo.updateFirst(query, update, DonadorDoc.class);
     }
 
-    @RabbitListener(queues = "consultas.mision-limpiada")
+    @RabbitListener(queues = "consultas.mision-donador-limpliada")
     public void onMisionLimpiada(MisionDonadorLimpiadaEvent e) {
         // 1. Buscamos al donador por su ID
         Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
@@ -157,6 +158,34 @@ public class ConsultasListener {
         Update update = new Update().pull("insignias", e.getInsigniaId());
 
         mongo.updateFirst(query, update, DonadorDoc.class);
+    }
+
+
+
+    //-------------------------------
+    //      MISIONES
+    //-------------------------------
+    @RabbitListener(queues = "consultas.mision-agregada")
+    public void onMisionSincronizada(MisionAgregadaEvent e) {
+        Query query = new Query(Criteria.where("misionId").is(e.getMisionId()));
+
+        Update update = new Update()
+                .set("nombre", e.getNombre())
+                .set("insigniaId", e.getInsigniaId())
+                .set("categoriaInicio", e.getCategoriaInicio())
+                .set("categoriaFin", e.getCategoriaFin())
+                .set("tipoMision", e.getTipoMision());
+
+        // Upsert actualiza si existe, o inserta si es nueva
+        mongo.upsert(query, update, MisionDoc.class);
+    }
+
+    @RabbitListener(queues = "consultas.mision-eliminada")
+    public void onMisionEliminada(MisionEliminadaEvent e) {
+        Query query = new Query(Criteria.where("misionId").is(e.getMisionId()));
+
+        // Elimina el documento del catálogo de MongoDB
+        mongo.remove(query, MisionDoc.class);
     }
 
 

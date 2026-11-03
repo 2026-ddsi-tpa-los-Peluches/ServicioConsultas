@@ -23,9 +23,16 @@ public class RabbitConfig {
         TopicExchange exchange = new TopicExchange(EXCHANGE);
         List<Declarable> elementos = new ArrayList<>();
         elementos.add(exchange);
-        for (String nombre : List.of("donador-estado", "donador-incentivos", "donacion",
-                "necesidad", "stock", "deposito", "asignacion","mision-progreso", "mision-completada",
-                "donador-categoria","mision-limpiada","insignia-agregada", "insignia-quitada")) {
+        for (String nombre : List.of(
+                "donador-estado", "donador-incentivos", "donador-categoria",
+                "mision-donador-completada","mision-donador-limpliada", "mision-donador-progreso",
+                "insignia-agregada", "insignia-quitada",
+                "donacion",
+                "necesidad",
+                "stock",
+                "deposito",
+                "asignacion",
+                "mision-agregada", "mision-eliminada")) {
             Queue cola = QueueBuilder.durable("consultas." + nombre).build();
             elementos.add(cola);
             elementos.add(BindingBuilder.bind(cola).to(exchange).with(nombre));
