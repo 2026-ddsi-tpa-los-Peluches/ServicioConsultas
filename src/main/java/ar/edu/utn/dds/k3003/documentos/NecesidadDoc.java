@@ -1,4 +1,4 @@
-package ar.edu.utn.dds.k3003.model;
+package ar.edu.utn.dds.k3003.documentos;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
@@ -7,7 +7,7 @@ import java.time.Instant;
 import java.util.List;
 
 @Document("necesidades")
-public record Necesidad(
+public record NecesidadDoc(
         @Id String id,
         String entidadId,
         String razonSocial,

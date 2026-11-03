@@ -1,9 +1,9 @@
 package ar.edu.utn.dds.k3003.service;
 
-import ar.edu.utn.dds.k3003.model.Asignacion;
-import ar.edu.utn.dds.k3003.model.Donacion;
-import ar.edu.utn.dds.k3003.model.Donador;
-import ar.edu.utn.dds.k3003.model.Necesidad;
+import ar.edu.utn.dds.k3003.documentos.AsignacionDoc;
+import ar.edu.utn.dds.k3003.documentos.DonacionDoc;
+import ar.edu.utn.dds.k3003.documentos.DonadorDoc;
+import ar.edu.utn.dds.k3003.documentos.NecesidadDoc;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.stereotype.Component;
@@ -45,34 +45,34 @@ public class ResumenDonador {
 
         // entidades que recibieron sus donaciones (solo entregas completadas)
         List<String> donacionIds = mongo.find(
-                        new Query(Criteria.where("donadorId").is(donadorId)), Donacion.class)
-                .stream().map(Donacion::id).toList();
-        List<Asignacion> entregadas = mongo.find(
+                        new Query(Criteria.where("donadorId").is(donadorId)), DonacionDoc.class)
+                .stream().map(DonacionDoc::id).toList();
+        List<AsignacionDoc> entregadas = mongo.find(
                 new Query(Criteria.where("donacionId").in(donacionIds)
-                        .and("estado").is("COMPLETADA")), Asignacion.class);
+                        .and("estado").is("COMPLETADA")), AsignacionDoc.class);
 
         Map<String, Integer> unidadesPorEntidad = new HashMap<>();
-        for (Asignacion a : entregadas) {
+        for (AsignacionDoc a : entregadas) {
             unidadesPorEntidad.merge(a.entidadId(), a.unidades(), Integer::sum);
         }
-        List<Donador.EntidadBeneficiada> entidades = unidadesPorEntidad.entrySet().stream()
-                .map(en -> new Donador.EntidadBeneficiada(
-                        en.getKey(), razonSocial(en.getKey()), en.getValue()))
-                .toList();
-
-        mongo.upsert(
-                new Query(Criteria.where("_id").is(donadorId)),
-                new Update()
-                        .set("donacionesPorEstado", porEstado)
-                        .set("quejasRecibidas", quejas)
-                        .set("entidades", entidades)
-                        .set("resumenActualizadoEn", Instant.now()),
-                Donador.class);
+//        List<DonadorDoc.EntidadBeneficiada> entidades = unidadesPorEntidad.entrySet().stream()
+//                .map(en -> new DonadorDoc.EntidadBeneficiada(
+//                        en.getKey(), razonSocial(en.getKey()), en.getValue()))
+//                .toList();
+//
+//        mongo.upsert(
+//                new Query(Criteria.where("_id").is(donadorId)),
+//                new Update()
+//                        .set("donacionesPorEstado", porEstado)
+//                        .set("quejasRecibidas", quejas)
+//                        .set("entidades", entidades)
+//                        .set("resumenActualizadoEn", Instant.now()),
+//                DonadorDoc.class);
     }
 
     private String razonSocial(String entidadId) {
-        Necesidad n = mongo.findOne(
-                new Query(Criteria.where("entidadId").is(entidadId)), Necesidad.class);
+        NecesidadDoc n = mongo.findOne(
+                new Query(Criteria.where("entidadId").is(entidadId)), NecesidadDoc.class);
         return n == null ? null : n.razonSocial();
     }
 }

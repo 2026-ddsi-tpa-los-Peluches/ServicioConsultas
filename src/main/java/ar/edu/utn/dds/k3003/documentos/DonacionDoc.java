@@ -1,14 +1,13 @@
-package ar.edu.utn.dds.k3003.model;
+package ar.edu.utn.dds.k3003.documentos;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.List;
 
 @Document("donaciones")
-public record Donacion(
+public record DonacionDoc(
         @Id String id,
         String donadorId,
         String productoId,
@@ -16,7 +15,10 @@ public record Donacion(
         String categoriaProducto,
         String subcategoriaProducto,
         int cantidad,
+
         String estado,              // INGRESADA, ACEPTADA, CONQUEJA
+
+
         Instant fechaIngreso,
         Queja queja,
         Instant ultimaActualizacion
