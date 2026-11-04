@@ -26,7 +26,8 @@ public class RabbitConfig {
         for (String nombre : List.of(
                 "donador-estado", "donador-incentivos", "donador-categoria",
                 "mision-donador-completada","mision-donador-limpliada", "mision-donador-progreso",
-                "insignia-agregada", "insignia-quitada",
+                "insignia-donador-agregada", "insignia-donador-quitada",
+                "insignia-agregada", "insignia-eliminada",
                 "donacion",
                 "necesidad",
                 "stock",
