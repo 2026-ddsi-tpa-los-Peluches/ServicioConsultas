@@ -39,6 +39,31 @@ public class ConsultasListener {
     //         DONADOR
     // --------------------------
 
+    @RabbitListener(queues = "consultas.donador-creado")
+    public void onDonadorCreado(DonadorCreadoEvent e) {
+        // Convertimos el ID numérico de postgres a String para que coincida con donadorId de MongoDoc
+        String donadorIdStr = String.valueOf(e.getId());
+
+        Query query = new Query(Criteria.where("donadorId").is(donadorIdStr));
+
+        Update update = new Update()
+                .set("donadorId", donadorIdStr)
+                .set("nombre", e.getNombre())
+                .set("apellido", e.getApellido())
+                .set("edad", e.getEdad())
+                .set("email", e.getEmail())
+                .set("nroDocumento", e.getNroDocumento())
+                .set("domicilio", e.getDomicilio())
+                .set("estado", e.getEstado())
+                .set("categoriaActual", e.getCategoria());
+
+        // Upsert: si no existe el documento del donador en Mongo, lo crea con estos datos base;
+        // si ya existiera por algún motivo, actualiza sus datos personales.
+        mongo.upsert(query, update, DonadorDoc.class);
+
+        System.out.println("DonadorDoc inicializado/sincronizado en MongoDB para el ID: " + donadorIdStr);
+    }
+
     // 1) cambiar estado de donador
     @RabbitListener(queues = "consultas.donador-estado")
     public void onDonadorEstado(DonadorEstadoActualizadoEvent e) {
@@ -205,7 +230,6 @@ public class ConsultasListener {
             System.out.println("Nueva entidad " + e.getRazonSocialEntidad() + " agregada al donador: " + e.getDonadorId());
         }
     }
-
 
     // ------------------
     //      INSIGNIAS

@@ -24,12 +24,12 @@ public class RabbitConfig {
         List<Declarable> elementos = new ArrayList<>();
         elementos.add(exchange);
         for (String nombre : List.of(
-                "donador-estado", "donador-incentivos", "donador-categoria",
+                "donador-creado" ,"donador-estado", "donador-incentivos", "donador-categoria",
                 "mision-donador-completada","mision-donador-limpliada", "mision-donador-progreso",
                 "insignia-donador-agregada", "insignia-donador-quitada",
                 "donador-donacion-estado", "donador-queja-registrada", "donador-entidad-donada",
                 "insignia-agregada", "insignia-eliminada",
-                "donacion",
+                "donacion", 
                 "necesidad",
                 "stock",
                 "deposito",
