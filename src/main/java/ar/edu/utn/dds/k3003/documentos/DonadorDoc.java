@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -45,7 +46,10 @@ public class DonadorDoc {
 
 
   // Insignias de un Donador
-  private List<String> insignias = new ArrayList<>();
+  List<String> insignias = new ArrayList<>();
+
+  // Cantidad de donaciones por cada estado de donacion
+  Map<String, Long> cantidadesPorEstado = new HashMap<>();
 
 
 

@@ -138,6 +138,24 @@ public class ConsultasListener {
         mongo.updateFirst(query, update, DonadorDoc.class);
     }
 
+    @RabbitListener(queues = "consultas.donador-donacion-estado")
+    public void onDonadorDonacionEstado(ActualizarCantidadDonacionesEstadoEvent evento) {
+
+        // Apunta al campo del mapa dentro del documento, ej: "cantidadesPorEstado.INGRESADA"
+        String campoEstado = "cantidadesPorEstado." + evento.estado();
+
+        Query query = new Query(Criteria.where("donadorID").is(evento.donadorID()));
+        Update update = new Update().inc(campoEstado, 1);
+
+        // upsert asegura que si el documento del donador no tiene inicializado el mapa o no existe en la vista, lo genere de forma atómica
+        mongo.upsert(query, update, DonadorDoc.class);
+    }
+
+
+    // ------------------
+    //      INSIGNIAS
+    // ------------------
+
 
     @RabbitListener(queues = "consultas.insignia-agregada")
     public void onInsigniaAgregada(InsigniaDonadorAgregadaEvent e) {
