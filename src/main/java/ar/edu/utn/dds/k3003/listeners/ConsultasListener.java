@@ -173,7 +173,7 @@ public class ConsultasListener {
     }
 
 
-    @RabbitListener(queues = "consultas.donacion-donador-entregada")
+    @RabbitListener(queues = "consultas.donador-entidad-donada")
     public void onDonacionEntregada(DonacionDonadorEntregadaEvent e) {
 
         // 1. Verificamos si el donador ya tiene a esta entidad en su lista
@@ -202,10 +202,9 @@ public class ConsultasListener {
             Update update = new Update().push("entidadesBeneficiadas", nuevaEntidad);
             mongo.updateFirst(queryDonador, update, DonadorDoc.class);
 
-            System.out.println(" [x] Nueva entidad " + e.getRazonSocialEntidad() + " agregada al donador: " + e.getDonadorId());
+            System.out.println("Nueva entidad " + e.getRazonSocialEntidad() + " agregada al donador: " + e.getDonadorId());
         }
     }
-
 
 
     // ------------------
