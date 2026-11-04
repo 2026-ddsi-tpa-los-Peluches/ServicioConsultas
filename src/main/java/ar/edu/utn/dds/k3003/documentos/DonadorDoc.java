@@ -3,6 +3,7 @@ package ar.edu.utn.dds.k3003.documentos;
 import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.dtos.MisionHistoricaDTO;
 import ar.edu.utn.dds.k3003.model.MisionActual;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
 import org.springframework.data.annotation.Id;
@@ -51,10 +52,22 @@ public class DonadorDoc {
   // Cantidad de donaciones por cada estado de donacion
   Map<String, Long> cantidadesPorEstado = new HashMap<>();
 
+  // lista de quejas de un donador
+  private List<QuejaDoc> quejas = new ArrayList<>();
+
+
 
 
 
   public DonadorDoc() {}
+
+  @Data
+  public static class QuejaDoc {
+    private Integer quejaId;
+    private String donacionId;
+    private String motivo;
+    private LocalDate fecha;
+  }
 
 }
 

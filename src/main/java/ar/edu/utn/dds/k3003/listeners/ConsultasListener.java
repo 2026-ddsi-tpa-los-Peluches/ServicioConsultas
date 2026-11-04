@@ -152,6 +152,27 @@ public class ConsultasListener {
     }
 
 
+    @RabbitListener(queues = "consultas.donador-queja-registrada")
+    public void onQuejaRegistrada(QuejaDonadorRegistradaEvent evento) {
+
+        // Mapeamos el evento al subdocumento de Mongo
+        DonadorDoc.QuejaDoc quejaDoc = new DonadorDoc.QuejaDoc();
+        quejaDoc.setQuejaId(evento.quejaId());
+        quejaDoc.setDonacionId(evento.donacionId());
+        quejaDoc.setMotivo(evento.motivo());
+        quejaDoc.setFecha(evento.fecha());
+
+        // Buscamos por donadorID (convertido a Long o String según cómo lo guardes)
+        Long donadorIdLong = Long.valueOf(evento.donadorId());
+        Query query = new Query(Criteria.where("donadorID").is(donadorIdLong));
+
+        // $push añade el elemento al array "quejas" de forma atómica
+        Update update = new Update().push("quejas", quejaDoc);
+
+        mongo.upsert(query, update, DonadorDoc.class);
+    }
+
+
     // ------------------
     //      INSIGNIAS
     // ------------------
