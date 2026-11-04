@@ -56,6 +56,10 @@ public class DonadorDoc {
   private List<QuejaDoc> quejas = new ArrayList<>();
 
 
+  // lista de las entidades distintas donadas por un donador con la cantidad donada
+  private List<EntidadBeneficiadaDoc> entidadesBeneficiadas = new ArrayList<>();
+
+
 
 
 
@@ -67,6 +71,13 @@ public class DonadorDoc {
     private String donacionId;
     private String motivo;
     private LocalDate fecha;
+  }
+
+  @Data
+  public static class EntidadBeneficiadaDoc {
+    private String entidadId;
+    private String razonSocialEntidad;
+    private Integer unidadesEntregadas;
   }
 
 }

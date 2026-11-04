@@ -173,6 +173,41 @@ public class ConsultasListener {
     }
 
 
+    @RabbitListener(queues = "consultas.donacion-donador-entregada")
+    public void onDonacionEntregada(DonacionDonadorEntregadaEvent e) {
+
+        // 1. Verificamos si el donador ya tiene a esta entidad en su lista
+        Query queryConEntidad = new Query(
+                Criteria.where("donadorId").is(e.getDonadorId())
+                        .and("entidadesBeneficiadas.entidadId").is(e.getEntidadId())
+        );
+
+        boolean yaExisteEntidad = mongo.exists(queryConEntidad, DonadorDoc.class);
+
+        if (yaExisteEntidad) {
+            // Si ya le había donado, incrementamos de forma atómica las unidades usando '$'
+            Update update = new Update().inc("entidadesBeneficiadas.$.unidadesEntregadas", e.getCantidad());
+            mongo.updateFirst(queryConEntidad, update, DonadorDoc.class);
+
+            System.out.println(" [x] Unidades incrementadas para la entidad " + e.getEntidadId() + " del donador: " + e.getDonadorId());
+        } else {
+            // Si no existe, creamos el objeto con la estructura y lo pusheamos al array
+            Query queryDonador = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
+
+            DonadorDoc.EntidadBeneficiadaDoc nuevaEntidad = new DonadorDoc.EntidadBeneficiadaDoc();
+            nuevaEntidad.setEntidadId(e.getEntidadId());
+            nuevaEntidad.setRazonSocialEntidad(e.getRazonSocialEntidad());
+            nuevaEntidad.setUnidadesEntregadas(e.getCantidad());
+
+            Update update = new Update().push("entidadesBeneficiadas", nuevaEntidad);
+            mongo.updateFirst(queryDonador, update, DonadorDoc.class);
+
+            System.out.println(" [x] Nueva entidad " + e.getRazonSocialEntidad() + " agregada al donador: " + e.getDonadorId());
+        }
+    }
+
+
+
     // ------------------
     //      INSIGNIAS
     // ------------------
