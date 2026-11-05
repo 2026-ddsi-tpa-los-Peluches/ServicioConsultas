@@ -48,13 +48,14 @@ public class RabbitConfig {
                 "necesidad-cantidad-recibida", "necesidad-asignacion-pendiente", "necesidad-asignacion-hecha",
                 "necesidad-creada", "necesidad-actualizada", "necesidad-eliminada",
 
+
                 // STOCK
                 "stock",
 
                 // DEPOSITO
                 "deposito-creado","deposito-eliminado","deposito-algoritmo-actualizado",
                 "deposito-paquete-actualizado", "deposito-paquete-agregado", "deposito-entidad-atendida",
-                "deposito-cantidad-asignacion-estado",
+                "deposito-cantidad-asignacion-estado", "deposito-donacion-ingresada", "deposito-donacion-entregada",
 
                 // ASIGNACION
                 "asignacion",

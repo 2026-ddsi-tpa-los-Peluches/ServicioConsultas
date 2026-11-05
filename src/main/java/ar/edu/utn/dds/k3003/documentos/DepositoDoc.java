@@ -44,6 +44,12 @@ public class DepositoDoc {
     private List<PaqueteStockDoc> paquetesDeposito = new ArrayList<>();
 
 
+    //lista de donaciones que entraron al deposito
+    private List<DonacionDepositoDoc> donacionesDeposito = new ArrayList<>();
+
+
+
+
     Instant ultimaActualizacion;
 
     public DepositoDoc() {
@@ -70,5 +76,16 @@ public class DepositoDoc {
         private String entidadId;
         private String razonSocial;
         private Integer unidadesEntregadas;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DonacionDepositoDoc {
+        private String donacionId;
+        private String donadorId;
+        private int cantidadDonada;
+        private Instant fechaQueLlego;
+        private Instant fechaQueSeEntrego; // Nulo hasta que se entrega
     }
 }

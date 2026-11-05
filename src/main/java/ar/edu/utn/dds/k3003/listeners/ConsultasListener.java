@@ -642,6 +642,44 @@ public class ConsultasListener {
     }
 
 
+    @RabbitListener(queues = "consultas.deposito-donacion-ingresada")
+    public void onDonacionIngresada(DepositoDonacionIngresadaEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        DepositoDoc.DonacionDepositoDoc nuevaDonacion = new DepositoDoc.DonacionDepositoDoc(
+                e.getDonacionId(),
+                e.getDonadorId(),
+                e.getCantidadDonada(),
+                e.getFechaQueLlego(),
+                null // Aún no se entregó
+        );
+
+        Update update = new Update()
+                .push("donacionesDeposito", nuevaDonacion)
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+        System.out.println("Donación agregada al historial del DepositoDoc ID: " + e.getDepositoId());
+    }
+
+    @RabbitListener(queues = "consultas.deposito-donacion-entregada")
+    public void onDonacionEntregada(DepositoDonacionEntregadaEvent e) {
+        // Buscamos el depósito y el elemento dentro del array donacionesDeposito que coincida con la donacionId
+        Query query = new Query(
+                Criteria.where("depositoId").is(e.getDepositoId())
+                        .and("donacionesDeposito.donacionId").is(e.getDonacionId())
+        );
+
+        // Actualizamos la fecha de entrega usando el operador posicional '$'
+        Update update = new Update()
+                .set("donacionesDeposito.$.fechaQueSeEntrego", e.getFechaQueSeEntrego())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+        System.out.println("Fecha de entrega registrada para la donación en DepositoDoc ID: " + e.getDepositoId());
+    }
+
+
 
     // ------------
     //  ASIGNACION
