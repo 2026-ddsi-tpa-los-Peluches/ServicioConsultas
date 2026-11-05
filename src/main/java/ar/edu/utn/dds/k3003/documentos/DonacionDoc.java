@@ -9,6 +9,7 @@ import java.time.LocalDate;
 @Document("donaciones")
 public record DonacionDoc(
         @Id String id,
+
         String donadorId,
         String productoId,
         String nombreProducto,
@@ -17,7 +18,6 @@ public record DonacionDoc(
         int cantidad,
 
         String estado,              // INGRESADA, ACEPTADA, CONQUEJA
-
 
         Instant fechaIngreso,
         Queja queja,

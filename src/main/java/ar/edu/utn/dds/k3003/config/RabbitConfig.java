@@ -27,7 +27,7 @@ public class RabbitConfig {
                 "donador-creado" ,"donador-estado", "donador-incentivos", "donador-categoria",
                 "mision-donador-completada","mision-donador-limpliada", "mision-donador-progreso",
                 "insignia-donador-agregada", "insignia-donador-quitada",
-                "producto-creado", "producto-actualizado", "producto-eliminado",
+                "producto-creado", "producto-actualizado", "producto-eliminado", "producto-stock-modificado",
                 "donador-donacion-estado", "donador-queja-registrada", "donador-entidad-donada",
                 "insignia-agregada", "insignia-eliminada",
                 "donacion",

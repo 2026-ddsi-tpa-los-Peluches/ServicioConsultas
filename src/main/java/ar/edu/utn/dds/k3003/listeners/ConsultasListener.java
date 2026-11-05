@@ -14,6 +14,7 @@ import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionPendiente;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoCreadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoEliminadoEvent;
+import ar.edu.utn.dds.k3003.events.productoEvents.StockProductoModificadoEvent;
 import ar.edu.utn.dds.k3003.events.stockEvents.StockActualizadoEvent;
 import ar.edu.utn.dds.k3003.service.Actualizador;
 import ar.edu.utn.dds.k3003.service.ResumenDonador;
@@ -361,6 +362,40 @@ public class ConsultasListener {
         Query query = new Query(Criteria.where("productoId").is(e.getProductoId()));
         mongo.remove(query, ProductoDoc.class);
         System.out.println(" [x] ProductoDoc eliminado de MongoDB para ID: " + e.getProductoId());
+    }
+
+
+    @RabbitListener(queues = "consultas.producto-stock-modificado")
+    public void onStockModificado(StockProductoModificadoEvent e) {
+
+        // 1. Verificamos si el producto ya tiene registrado este depósito en su lista
+        Query queryConDeposito = new Query(
+                Criteria.where("productoId").is(e.getProductoId())
+                        .and("depositosStock.depositoId").is(e.getDepositoId())
+        );
+
+        boolean yaExisteDeposito = mongo.exists(queryConDeposito, ProductoDoc.class);
+
+        if (yaExisteDeposito) {
+            // 2A. Si ya existe, incrementamos/decrementamos las unidades de forma atómica con '$'
+            Update update = new Update().inc("depositosStock.$.cantidadUnidades", e.getCantidadDelta());
+            mongo.updateFirst(queryConDeposito, update, ProductoDoc.class);
+
+            System.out.println(" [x] Stock actualizado para producto " + e.getProductoId() + " en depósito " + e.getDepositoId());
+        } else {
+            // 2B. Si no existe, agregamos el nuevo objeto al array con .push()
+            Query queryProducto = new Query(Criteria.where("productoId").is(e.getProductoId()));
+
+            ProductoDoc.DepositoStockDoc nuevoStock = new ProductoDoc.DepositoStockDoc();
+            nuevoStock.setDepositoId(e.getDepositoId());
+            nuevoStock.setNombreDeposito(e.getNombreDeposito());
+            nuevoStock.setCantidadUnidades(e.getCantidadDelta());
+
+            Update update = new Update().push("depositosStock", nuevoStock);
+            mongo.updateFirst(queryProducto, update, ProductoDoc.class);
+
+            System.out.println(" [x] Nuevo depósito " + e.getDepositoId() + " agregado con stock al producto " + e.getProductoId());
+        }
     }
 
     // -----------------------
