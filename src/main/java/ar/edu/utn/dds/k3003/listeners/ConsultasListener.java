@@ -3,7 +3,9 @@ package ar.edu.utn.dds.k3003.listeners;
 import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.documentos.*;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionActualizadaEvent;
-import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoActualizadoEvent;
+import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoAlgoritmoActualizadoEvent;
+import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoCreadoEvent;
+import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoEliminadoEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
@@ -500,17 +502,40 @@ public class ConsultasListener {
     // ---------------
     //    DEPOSITO
     // ---------------
-    @RabbitListener(queues = "consultas.deposito")
-    public void onDeposito(DepositoActualizadoEvent e) {
-        actualizador.aplicarSiEsMasNuevo(DepositoDoc.class, e.depositoId(),
-                "ultimaActualizacion", e.fechaEvento(),
-                new Update()
-                        .set("nombre", e.nombre())
-                        .set("capacidad", e.capacidad())
-                        .set("algoritmoMatchmaking", e.algoritmoMatchmaking()));
+    @RabbitListener(queues = "consultas.deposito-creado")
+    public void onDepositoCreado(DepositoCreadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        Update update = new Update()
+                .set("depositoId", e.getDepositoId())
+                .set("nombre", e.getNombre())
+                .set("direccion", e.getDireccion())
+                .set("algoritmoMatchmaking", e.getAlgoritmoMatchmaking())
+                .set("capacidadMaxima", e.getCapacidadMaxima())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.upsert(query, update, DepositoDoc.class);
+        System.out.println("DepositoDoc creado/sincronizado en MongoDB para ID: " + e.getDepositoId());
     }
 
+    @RabbitListener(queues = "consultas.deposito-eliminado")
+    public void onDepositoEliminado(DepositoEliminadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        mongo.remove(query, DepositoDoc.class);
+        System.out.println("DepositoDoc eliminado de MongoDB para ID: " + e.getDepositoId());
+    }
 
+    @RabbitListener(queues = "consultas.deposito-algoritmo-actualizado")
+    public void onAlgoritmoActualizado(DepositoAlgoritmoActualizadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        Update update = new Update()
+                .set("algoritmoMatchmaking", e.getAlgoritmoMatchmaking())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+        System.out.println("DepositoDoc actualizado (algoritmo) en MongoDB para ID: " + e.getDepositoId());
+    }
     // ------------
     //  ASIGNACION
     // ------------

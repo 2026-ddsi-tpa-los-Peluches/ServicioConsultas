@@ -24,20 +24,42 @@ public class RabbitConfig {
         List<Declarable> elementos = new ArrayList<>();
         elementos.add(exchange);
         for (String nombre : List.of(
+
+                //DONADOR
                 "donador-creado" ,"donador-estado", "donador-incentivos", "donador-categoria",
                 "mision-donador-completada","mision-donador-limpliada", "mision-donador-progreso",
                 "insignia-donador-agregada", "insignia-donador-quitada",
-                "producto-creado", "producto-actualizado", "producto-eliminado", "producto-stock-modificado",
                 "donador-donacion-estado", "donador-queja-registrada", "donador-entidad-donada",
+
+                //PRODUCTO
+                "producto-creado", "producto-actualizado", "producto-eliminado", "producto-stock-modificado",
+
+
+                //INSIGNNIA
                 "insignia-agregada", "insignia-eliminada",
+
+                // DONACION
                 "donacion",
+
+                // PRODUCTO
                 "producto-creado", "producto-actualizado", "producto-eliminado",
+
+                // NECESIDAD
                 "necesidad-cantidad-recibida", "necesidad-asignacion-pendiente", "necesidad-asignacion-hecha",
                 "necesidad-creada", "necesidad-actualizada", "necesidad-eliminada",
+
+                // STOCK
                 "stock",
-                "deposito",
+
+                // DEPOSITO
+                "deposito-creado","deposito-eliminado","deposito-algoritmo-actualizado",
+
+                // ASIGNACION
                 "asignacion",
-                "mision-agregada", "mision-eliminada")) {
+
+                //MISION
+                "mision-agregada", "mision-eliminada"
+        )) {
             Queue cola = QueueBuilder.durable("consultas." + nombre).build();
             elementos.add(cola);
             elementos.add(BindingBuilder.bind(cola).to(exchange).with(nombre));
