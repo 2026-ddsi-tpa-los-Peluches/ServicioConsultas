@@ -11,6 +11,9 @@ import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionHecha;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionPendiente;
+import ar.edu.utn.dds.k3003.events.productoEvents.ProductoActualizadoEvent;
+import ar.edu.utn.dds.k3003.events.productoEvents.ProductoCreadoEvent;
+import ar.edu.utn.dds.k3003.events.productoEvents.ProductoEliminadoEvent;
 import ar.edu.utn.dds.k3003.events.stockEvents.StockActualizadoEvent;
 import ar.edu.utn.dds.k3003.service.Actualizador;
 import ar.edu.utn.dds.k3003.service.ResumenDonador;
@@ -23,6 +26,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.stereotype.Component;
 
 
+import java.time.Instant;
 import java.util.List;
 
 @Component
@@ -312,6 +316,51 @@ public class ConsultasListener {
         if (aplicado) {
             resumen.recalcular(e.donadorId());
         }
+    }
+
+
+    // --------------------
+    //      PRODUCTO
+    // --------------------
+
+    @RabbitListener(queues = "consultas.producto-creado")
+    public void onProductoCreado(ProductoCreadoEvent e) {
+        Query query = new Query(Criteria.where("productoId").is(e.getProductoId()));
+
+        Update update = new Update()
+                .set("productoId", e.getProductoId())
+                .set("nombre", e.getNombre())
+                .set("descripcion", e.getDescripcion())
+                .set("categoriaId", e.getCategoriaId())
+                .set("categoriaNombre", e.getCategoriaNombre())
+                .set("subcategoriaId", e.getSubcategoriaId())
+                .set("subcategoriaNombre", e.getSubcategoriaNombre())
+                .set("identificadorId", e.getIdentificadorId())
+                .set("identificadorTipo", e.getIdentificadorTipo())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.upsert(query, update, ProductoDoc.class);
+        System.out.println(" [x] ProductoDoc enriquecido guardado en MongoDB para ID: " + e.getProductoId());
+    }
+
+    @RabbitListener(queues = "consultas.producto-actualizado")
+    public void onProductoActualizado(ProductoActualizadoEvent e) {
+        Query query = new Query(Criteria.where("productoId").is(e.getProductoId()));
+
+        Update update = new Update()
+                .set("nombre", e.getNombre())
+                .set("descripcion", e.getDescripcion())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, ProductoDoc.class);
+        System.out.println(" [x] ProductoDoc actualizado en MongoDB para ID: " + e.getProductoId());
+    }
+
+    @RabbitListener(queues = "consultas.producto-eliminado")
+    public void onProductoEliminado(ProductoEliminadoEvent e) {
+        Query query = new Query(Criteria.where("productoId").is(e.getProductoId()));
+        mongo.remove(query, ProductoDoc.class);
+        System.out.println(" [x] ProductoDoc eliminado de MongoDB para ID: " + e.getProductoId());
     }
 
     // -----------------------
