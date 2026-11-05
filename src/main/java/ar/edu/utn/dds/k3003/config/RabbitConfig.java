@@ -34,7 +34,7 @@ public class RabbitConfig {
                 "stock",
                 "deposito",
                 "asignacion",
-                "mision-agregada", "mision-eliminada")) {
+                "mision-agregada", "mision-eliminada","donador-set-mision")) {
             Queue cola = QueueBuilder.durable("consultas." + nombre).build();
             elementos.add(cola);
             elementos.add(BindingBuilder.bind(cola).to(exchange).with(nombre));

@@ -74,6 +74,24 @@ public class ConsultasListener {
                 new Update().set("estado", e.estado()));
     }
 
+    @RabbitListener(queues = "consultas.donador-set-mision")
+    public void onSetMisionDonador(DonadorMisionEvent e) { // Reemplaza 'TuEventoDeMision' por la clase de evento real que uses
+
+        // Convertimos el ID a String por si en Mongo lo guardás como texto (como venís haciendo)
+        String donadorIdStr = String.valueOf(e.getDonadorId()); // O e.donadorId() si tu evento es un record
+
+        // 1. Armamos la query para buscar al donador por su ID
+        Query query = new Query(Criteria.where("donadorId").is(donadorIdStr));
+
+        // 2. Creamos el Update especificando SOLAMENTE el campo que querés modificar
+        Update update = new Update().set("misionActual", e.getMisionActualId()); // Cambiá 'getMisionId()' por el método que traiga el ID de la misión en tu evento
+
+        // 3. Ejecutamos la actualización en MongoDB (actualiza el primer documento que coincida)
+        mongo.updateFirst(query, update, DonadorDoc.class);
+
+        System.out.println(" [x] Misión actual actualizada para el donador ID: " + donadorIdStr);
+    }
+
 //    @RabbitListener(queues = "consultas.donador-incentivos")
 //    public void onDonadorIncentivos(DonadorActualizadoEvent e) {
 //        actualizador.aplicarSiEsMasNuevo(DonadorDoc.class, e.donadorId(),
