@@ -8,6 +8,7 @@ import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
+import ar.edu.utn.dds.k3003.events.necesidadEvents.CantidadRecibidaActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionHecha;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionPendiente;
@@ -454,6 +455,23 @@ public class ConsultasListener {
         mongo.updateFirst(query, update, NecesidadDoc.class);
 
         System.out.println("signación pendiente " + e.getAsignacionId() + " eliminada de la necesidad: " + e.getNecesidadId());
+    }
+
+
+    @RabbitListener(queues = "consultas.necesidad-satisfecha")
+    public void onNecesidadSatisfecha(CantidadRecibidaActualizadaEvent e) {
+
+        // 1. Buscamos la necesidad por su ID de String (coincidente con el record NecesidadDoc)
+        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
+
+        // 2. Incrementamos la cantidad recibida e actualizamos la fecha de última modificación
+        Update update = new Update()
+                .inc("cantidadRecibida", e.getCantidad())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, NecesidadDoc.class);
+
+        System.out.println("Cantidad recibida incrementada en " + e.getCantidad() + " para la necesidad: " + e.getNecesidadId());
     }
 
 

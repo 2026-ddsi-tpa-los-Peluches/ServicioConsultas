@@ -33,6 +33,7 @@ public class RabbitConfig {
                 "donacion",
                 "producto-creado", "producto-actualizado", "producto-eliminado",
                 "necesidad", "necesidad-asignacion-pendiente", "necesidad-asignacion-hecha",
+                "necesidad-cantidad-recibida",
                 "stock",
                 "deposito",
                 "asignacion",
