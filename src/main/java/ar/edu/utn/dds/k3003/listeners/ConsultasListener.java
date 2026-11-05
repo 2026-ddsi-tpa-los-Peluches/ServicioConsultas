@@ -169,7 +169,7 @@ public class ConsultasListener {
         // Apunta al campo del mapa dentro del documento, ej: "cantidadesPorEstado.INGRESADA"
         String campoEstado = "cantidadesPorEstado." + evento.estado();
 
-        Query query = new Query(Criteria.where("donadorID").is(evento.donadorID()));
+        Query query = new Query(Criteria.where("donadorId").is(evento.donadorID()));
         Update update = new Update().inc(campoEstado, 1);
 
         // upsert asegura que si el documento del donador no tiene inicializado el mapa o no existe en la vista, lo genere de forma atómica
