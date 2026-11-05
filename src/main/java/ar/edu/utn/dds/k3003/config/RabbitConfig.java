@@ -54,6 +54,7 @@ public class RabbitConfig {
                 // DEPOSITO
                 "deposito-creado","deposito-eliminado","deposito-algoritmo-actualizado",
                 "deposito-paquete-actualizado", "deposito-paquete-agregado", "deposito-entidad-atendida",
+                "deposito-cantidad-asignacion-estado",
 
                 // ASIGNACION
                 "asignacion",

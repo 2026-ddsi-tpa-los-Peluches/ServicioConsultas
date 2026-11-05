@@ -627,6 +627,21 @@ public class ConsultasListener {
     }
 
 
+    @RabbitListener(queues = "consultas.deposito-cantidad-asignacion-estado")
+    public void onAsignacionEstadoReportada(DepositoCantidadAsignacionEstadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        // Incrementa en 1 la clave correspondiente dentro del Map en MongoDB de forma atómica
+        Update update = new Update()
+                .inc("cantidadAsignacionesPorEstado." + e.getEstado(), 1L)
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+
+        System.out.println("Contador de estado [" + e.getEstado() + "] incrementado para depósito ID: " + e.getDepositoId());
+    }
+
+
 
     // ------------
     //  ASIGNACION

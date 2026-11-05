@@ -10,7 +10,9 @@ import org.springframework.data.mongodb.core.mapping.Document;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Document("depositos")
@@ -30,7 +32,7 @@ public class DepositoDoc {
 
 
     //cantidad de asignaciones por estado
-    List<AsignacionEstadoDoc> cantidadAsignacionesPorEstado;
+    Map<String, Long> cantidadAsignacionesPorEstado = new HashMap<>();
 
 
     //cantidad de entidades distintas atendidas
@@ -48,12 +50,7 @@ public class DepositoDoc {
     }
 
 
-    @Data
-    public static class AsignacionEstadoDoc {
-        private String estadoAsignacion;
-        private String cantidad;
-        private LocalDate fecha;
-    }
+
 
 
     @Data
