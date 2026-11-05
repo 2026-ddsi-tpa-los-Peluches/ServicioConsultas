@@ -1,12 +1,15 @@
 package ar.edu.utn.dds.k3003.documentos;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 
 @Getter
@@ -35,6 +38,10 @@ public class DepositoDoc {
     List<EntidadesAtendidasDoc> entidadesAtendidas;
 
 
+    //lista de paquetes que estan en el deposito
+    private List<PaqueteStockDoc> stockActual = new ArrayList<>();
+
+
     Instant ultimaActualizacion;
 
     public DepositoDoc() {
@@ -53,5 +60,15 @@ public class DepositoDoc {
         private Integer entidadId;
         private String razonSocail;
         private Integer unidadesEntregadas;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class PaqueteStockDoc {
+        private String paqueteId;
+        private String donacionID;
+        private String productoID;
+        private int cantidad;
     }
 }

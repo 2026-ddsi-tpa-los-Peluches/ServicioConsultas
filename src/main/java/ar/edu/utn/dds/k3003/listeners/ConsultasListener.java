@@ -3,9 +3,7 @@ package ar.edu.utn.dds.k3003.listeners;
 import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.documentos.*;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionActualizadaEvent;
-import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoAlgoritmoActualizadoEvent;
-import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoCreadoEvent;
-import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoEliminadoEvent;
+import ar.edu.utn.dds.k3003.events.depositoEvents.*;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
@@ -535,6 +533,59 @@ public class ConsultasListener {
 
         mongo.updateFirst(query, update, DepositoDoc.class);
         System.out.println("DepositoDoc actualizado (algoritmo) en MongoDB para ID: " + e.getDepositoId());
+    }
+
+    @RabbitListener(queues = "consultas.deposito-paquete-agregado")
+    public void onPaqueteAgregado(DepositoPaqueteAgregadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        DepositoDoc.PaqueteStockDoc nuevoPaquete = new DepositoDoc.PaqueteStockDoc(
+                e.getPaqueteId(),
+                e.getDonacionID(),
+                e.getProductoID(),
+                e.getCantidad()
+        );
+
+        Update update = new Update()
+                .push("stockActual", nuevoPaquete)
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+        System.out.println("Paquete agregado al DepositoDoc en MongoDB para depósito ID: " + e.getDepositoId());
+    }
+
+    @RabbitListener(queues = "consultas.deposito-paquete-actualizado")
+    public void onPaqueteStockActualizado(DepositoPaqueteStockActualizadoEvent e) {
+        Query queryDeposito = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        // 1. Descontamos la cantidad del stockTotal general del depósito
+        Update updateStockTotal = new Update()
+                .inc("stockTotal", -e.getCantidadDescontada())
+                .set("ultimaActualizacion", Instant.now());
+        mongo.updateFirst(queryDeposito, updateStockTotal, DepositoDoc.class);
+
+        // 2. Evaluamos si el paquete se quedó sin stock o todavía tiene unidades
+        if (e.getNuevaCantidad() <= 0) {
+            // Si se agotó, lo removemos del array stockActual
+            Query queryPaquete = new Query(
+                    Criteria.where("depositoId").is(e.getDepositoId())
+                            .and("stockActual.paqueteId").is(e.getPaqueteId())
+            );
+            Update updatePull = new Update().pull("stockActual", org.bson.Document.parse("{\"paqueteId\": \"" + e.getPaqueteId() + "\"}"));
+            mongo.updateFirst(queryPaquete, updatePull, DepositoDoc.class);
+
+            System.out.println("Paquete agotado y removido del DepositoDoc ID: " + e.getDepositoId());
+        } else {
+            // Si todavía tiene stock, actualizamos la cantidad en el subdocumento usando el operador posicional '$'
+            Query queryPaquete = new Query(
+                    Criteria.where("depositoId").is(e.getDepositoId())
+                            .and("stockActual.paqueteId").is(e.getPaqueteId())
+            );
+            Update updateSet = new Update().set("stockActual.$.cantidad", e.getNuevaCantidad());
+            mongo.updateFirst(queryPaquete, updateSet, DepositoDoc.class);
+
+            System.out.println("Cantidad de paquete actualizada en DepositoDoc ID: " + e.getDepositoId());
+        }
     }
     // ------------
     //  ASIGNACION
