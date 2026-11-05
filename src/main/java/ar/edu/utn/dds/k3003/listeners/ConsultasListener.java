@@ -9,6 +9,7 @@ import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadActualizadaEvent;
+import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionPendiente;
 import ar.edu.utn.dds.k3003.events.stockEvents.StockActualizadoEvent;
 import ar.edu.utn.dds.k3003.service.Actualizador;
 import ar.edu.utn.dds.k3003.service.ResumenDonador;
@@ -329,6 +330,28 @@ public class ConsultasListener {
                         .set("categoriaProducto", e.categoriaProducto())
                         .set("subcategoriaProducto", e.subcategoriaProducto())
                         .set("cantidadFaltante", e.cantidadFaltante()));
+    }
+
+    @RabbitListener(queues = "consultas.necesidad-asignacion-pendiente")
+    public void onNecesidadAsignacionPendiente(NecesidadAsignacionPendiente e) {
+
+        // Buscamos la necesidad por su ID
+        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
+
+        // Creamos el subdocumento AsignacionPendiente que matchea con tu record
+        NecesidadDoc.AsignacionPendienteDoc nuevaAsignacionPendiente =
+                new NecesidadDoc.AsignacionPendienteDoc(
+                        e.getAsignacionId(),
+                        e.getDepositoId(),
+                        e.getUnidades()
+                );
+
+        // Pusheamos la asignación pendiente a la lista dentro de la necesidad
+        Update update = new Update().push("asignacionesPendientes", nuevaAsignacionPendiente);
+
+        mongo.updateFirst(query, update, NecesidadDoc.class);
+
+        System.out.println(" [x] Asignación pendiente " + e.getAsignacionId() + " agregada a la necesidad: " + e.getNecesidadId());
     }
 
     // --------------
