@@ -34,12 +34,12 @@ public class DepositoDoc {
 
 
     //cantidad de entidades distintas atendidas
-    Integer cantidadDeEnttidadesDistintasAtendidas;
+    Integer cantidadDeEntidadesDistintasAtendidas;
     List<EntidadesAtendidasDoc> entidadesAtendidas;
 
 
     //lista de paquetes que estan en el deposito
-    private List<PaqueteStockDoc> stockActual = new ArrayList<>();
+    private List<PaqueteStockDoc> paquetesDeposito = new ArrayList<>();
 
 
     Instant ultimaActualizacion;
@@ -55,12 +55,6 @@ public class DepositoDoc {
         private LocalDate fecha;
     }
 
-    @Data
-    public static class EntidadesAtendidasDoc{
-        private Integer entidadId;
-        private String razonSocail;
-        private Integer unidadesEntregadas;
-    }
 
     @Data
     @NoArgsConstructor
@@ -70,5 +64,14 @@ public class DepositoDoc {
         private String donacionID;
         private String productoID;
         private int cantidad;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class EntidadesAtendidasDoc {
+        private String entidadId;
+        private String razonSocial;
+        private Integer unidadesEntregadas;
     }
 }

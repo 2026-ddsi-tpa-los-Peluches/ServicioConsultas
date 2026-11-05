@@ -558,11 +558,11 @@ public class ConsultasListener {
     public void onPaqueteStockActualizado(DepositoPaqueteStockActualizadoEvent e) {
         Query queryDeposito = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
 
-        // 1. Descontamos la cantidad del stockTotal general del depósito
-        Update updateStockTotal = new Update()
-                .inc("stockTotal", -e.getCantidadDescontada())
+        // 1. Descontamos la cantidad del paquetesDeposito general del depósito
+        Update updatePaquetesDeposito = new Update()
+                .inc("paquetesDeposito", -e.getCantidadDescontada())
                 .set("ultimaActualizacion", Instant.now());
-        mongo.updateFirst(queryDeposito, updateStockTotal, DepositoDoc.class);
+        mongo.updateFirst(queryDeposito, updatePaquetesDeposito, DepositoDoc.class);
 
         // 2. Evaluamos si el paquete se quedó sin stock o todavía tiene unidades
         if (e.getNuevaCantidad() <= 0) {
@@ -587,6 +587,47 @@ public class ConsultasListener {
             System.out.println("Cantidad de paquete actualizada en DepositoDoc ID: " + e.getDepositoId());
         }
     }
+
+    @RabbitListener(queues = "consultas.deposito-entidad-atendida")
+    public void onEntidadAtendida(DepositoEntidadAtendidaEvent e) {
+        Query queryDeposito = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        // 1. Verificamos si la entidad ya existe dentro de la lista 'entidadesAtendidas' del depósito
+        Query queryEntidadExistente = new Query(
+                Criteria.where("depositoId").is(e.getDepositoId())
+                        .and("entidadesAtendidas.entidadId").is(e.getEntidadId())
+        );
+
+        boolean yaFueAtendida = mongo.exists(queryEntidadExistente, DepositoDoc.class);
+
+        if (yaFueAtendida) {
+            // 2A. Si ya fue atendida, sumamos las unidades entregadas con el operador posicional '$'
+            Update updateInc = new Update()
+                    .inc("entidadesAtendidas.$.unidadesEntregadas", e.getUnidadesEntregadas())
+                    .set("ultimaActualizacion", Instant.now());
+
+            mongo.updateFirst(queryEntidadExistente, updateInc, DepositoDoc.class);
+            System.out.println("Unidades sumadas a entidad existente en DepositoDoc ID: " + e.getDepositoId());
+        } else {
+            // 2B. Si es una entidad nueva para este depósito, la pusheamos al array Y aumentamos el contador total en 1
+            DepositoDoc.EntidadesAtendidasDoc nuevaEntidad = new DepositoDoc.EntidadesAtendidasDoc(
+                    e.getEntidadId(),
+                    e.getRazonSocial(),
+                    e.getUnidadesEntregadas()
+            );
+
+            Update updatePush = new Update()
+                    .push("entidadesAtendidas", nuevaEntidad)
+                    .inc("cantidadDeEntidadesDistintasAtendidas", 1)
+                    .set("ultimaActualizacion", Instant.now());
+
+            mongo.updateFirst(queryDeposito, updatePush, DepositoDoc.class);
+            System.out.println("Nueva entidad agregada y contador incrementado en DepositoDoc ID: " + e.getDepositoId());
+        }
+    }
+
+
+
     // ------------
     //  ASIGNACION
     // ------------
