@@ -30,7 +30,7 @@ public class RabbitConfig {
                 "donador-donacion-estado", "donador-queja-registrada", "donador-entidad-donada",
                 "insignia-agregada", "insignia-eliminada",
                 "donacion", 
-                "necesidad", "necesidad-asignacion-pendiente",
+                "necesidad", "necesidad-asignacion-pendiente", "necesidad-asignacion-hecha",
                 "stock",
                 "deposito",
                 "asignacion",

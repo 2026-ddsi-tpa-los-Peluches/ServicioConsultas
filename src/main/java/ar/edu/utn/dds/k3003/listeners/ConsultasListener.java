@@ -9,6 +9,7 @@ import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadActualizadaEvent;
+import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionHecha;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionPendiente;
 import ar.edu.utn.dds.k3003.events.stockEvents.StockActualizadoEvent;
 import ar.edu.utn.dds.k3003.service.Actualizador;
@@ -351,8 +352,28 @@ public class ConsultasListener {
 
         mongo.updateFirst(query, update, NecesidadDoc.class);
 
-        System.out.println(" [x] Asignación pendiente " + e.getAsignacionId() + " agregada a la necesidad: " + e.getNecesidadId());
+        System.out.println(" Asignación pendiente " + e.getAsignacionId() + " agregada a la necesidad: " + e.getNecesidadId());
     }
+
+    @RabbitListener(queues = "consultas.asignacion-completada")
+    public void onAsignacionCompletada(NecesidadAsignacionHecha e) {
+
+        // 1. Buscamos la necesidad contenedora
+        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
+
+        // 2. Usamos .pull() para remover del array 'asignacionesPendientes'
+        // el objeto que tenga el asignacionId correspondiente
+        Update update = new Update().pull("asignacionesPendientes",
+                Query.query(Criteria.where("asignacionId").is(e.getAsignacionId()))
+        );
+
+        mongo.updateFirst(query, update, NecesidadDoc.class);
+
+        System.out.println("signación pendiente " + e.getAsignacionId() + " eliminada de la necesidad: " + e.getNecesidadId());
+    }
+
+
+
 
     // --------------
     //      STOCK
