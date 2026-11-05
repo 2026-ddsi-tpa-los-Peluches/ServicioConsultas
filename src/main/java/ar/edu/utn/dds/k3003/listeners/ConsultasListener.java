@@ -8,10 +8,7 @@ import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
-import ar.edu.utn.dds.k3003.events.necesidadEvents.CantidadRecibidaActualizadaEvent;
-import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadActualizadaEvent;
-import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionHecha;
-import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionPendiente;
+import ar.edu.utn.dds.k3003.events.necesidadEvents.*;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoCreadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoEliminadoEvent;
@@ -29,6 +26,7 @@ import org.springframework.stereotype.Component;
 
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -402,42 +400,49 @@ public class ConsultasListener {
     // -----------------------
     //      NECESIDAD
     // ----------------------
-    @RabbitListener(queues = "consultas.necesidad")
-    public void onNecesidad(NecesidadActualizadaEvent e) {
-        actualizador.aplicarSiEsMasNuevo(NecesidadDoc.class, e.necesidadId(),
-                "ultimaActualizacion", e.fechaEvento(),
-                new Update()
-                        .set("entidadId", e.entidadId())
-                        .set("razonSocial", e.razonSocial())
-                        .set("nivelUrgencia", e.nivelUrgencia())
-                        .set("tipoNecesidad", e.tipoNecesidad())
-                        .set("productoId", e.productoId())
-                        .set("nombreProducto", e.nombreProducto())
-                        .set("categoriaProducto", e.categoriaProducto())
-                        .set("subcategoriaProducto", e.subcategoriaProducto())
-                        .set("cantidadFaltante", e.cantidadFaltante()));
+    @RabbitListener(queues = "consultas.necesidad-creada")
+    public void onNecesidadCreada(NecesidadCreadaEvent e) {
+        Query query = new Query(Criteria.where("id").is(e.getId()));
+
+        Update update = new Update()
+                .set("id", e.getId())
+                .set("entidadId", e.getEntidadId())
+                .set("razonSocial", e.getRazonSocial())
+                .set("nivelUrgencia", e.getNivelUrgencia())
+                .set("descripcion", e.getDescripcion())
+                .set("tipoNecesidad", e.getTipoNecesidad())
+                .set("productoId", e.getProductoId())
+                .set("nombreProducto", e.getNombreProducto())
+                .set("categoriaProducto", e.getCategoriaProducto())
+                .set("subcategoriaProducto", e.getSubcategoriaProducto())
+                .set("cantidadObjetivo", e.getCantidadObjetivo())
+                .setOnInsert("cantidadRecibida", 0) // Inicializa en 0 solo si es documento nuevo
+                .setOnInsert("asignacionesPendientes", new ArrayList<>()) // Inicializa lista vacía
+                .set("ultimaActualizacion", Instant.now());
+
+        // Upsert por si acaso ya existiera
+        mongo.upsert(query, update, NecesidadDoc.class);
+        System.out.println("NecesidadDoc creada/sincronizada en MongoDB para ID: " + e.getId());
     }
 
-    @RabbitListener(queues = "consultas.necesidad-asignacion-pendiente")
-    public void onNecesidadAsignacionPendiente(NecesidadAsignacionPendiente e) {
+    @RabbitListener(queues = "consultas.necesidad-actualizada")
+    public void onNecesidadActualizada(NecesidadActualizadaEvent e) {
+        Query query = new Query(Criteria.where("id").is(e.getId()));
 
-        // Buscamos la necesidad por su ID
-        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
-
-        // Creamos el subdocumento AsignacionPendiente que matchea con tu record
-        NecesidadDoc.AsignacionPendienteDoc nuevaAsignacionPendiente =
-                new NecesidadDoc.AsignacionPendienteDoc(
-                        e.getAsignacionId(),
-                        e.getDepositoId(),
-                        e.getUnidades()
-                );
-
-        // Pusheamos la asignación pendiente a la lista dentro de la necesidad
-        Update update = new Update().push("asignacionesPendientes", nuevaAsignacionPendiente);
+        Update update = new Update()
+                .set("nivelUrgencia", e.getNivelUrgencia())
+                .set("descripcion", e.getDescripcion())
+                .set("ultimaActualizacion", Instant.now());
 
         mongo.updateFirst(query, update, NecesidadDoc.class);
+        System.out.println("NecesidadDoc actualizada en MongoDB para ID: " + e.getId());
+    }
 
-        System.out.println(" Asignación pendiente " + e.getAsignacionId() + " agregada a la necesidad: " + e.getNecesidadId());
+    @RabbitListener(queues = "consultas.necesidad-eliminada")
+    public void onNecesidadEliminada(NecesidadEliminadaEvent e) {
+        Query query = new Query(Criteria.where("id").is(e.getId()));
+        mongo.remove(query, NecesidadDoc.class);
+        System.out.println("NecesidadDoc eliminada de MongoDB para ID: " + e.getId());
     }
 
     @RabbitListener(queues = "consultas.asignacion-completada")
