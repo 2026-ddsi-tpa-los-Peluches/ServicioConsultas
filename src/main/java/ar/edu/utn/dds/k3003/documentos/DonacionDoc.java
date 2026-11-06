@@ -10,6 +10,7 @@ import java.time.LocalDate;
 public record DonacionDoc(
         @Id String id,
 
+
         String donadorId,
         String productoId,
         String nombreProducto,

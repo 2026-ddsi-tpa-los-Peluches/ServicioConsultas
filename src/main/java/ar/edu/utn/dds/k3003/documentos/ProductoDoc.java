@@ -39,6 +39,8 @@ public class ProductoDoc {
     // Lista de stock por deposito
     private List<DepositoStockDoc> depositosStock = new ArrayList<>();
 
+
+
     @Data
     public static class DepositoStockDoc {
         private String depositoId;
