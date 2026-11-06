@@ -81,16 +81,3 @@ public class DonadorDoc {
   }
 
 }
-
-
-//        List<Insignia> insignias,
-//        Instant incentivosActualizadoEn,
-//        Map<String, Integer> donacionesPorEstado,
-//        int quejasRecibidas,
-//        List<EntidadBeneficiada> entidades,
-//        Instant resumenActualizadoEn
-// ) {
-////  public record Insignia(String insigniaId, String nombre) {}
-////  public record MisionActual(String misionId, String nombre, int progreso, int objetivo) {}
-////  public record EntidadBeneficiada(String entidadId, String razonSocial, int unidades) {}
-//}
