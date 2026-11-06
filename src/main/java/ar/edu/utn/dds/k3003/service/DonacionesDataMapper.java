@@ -1,5 +1,6 @@
 package ar.edu.utn.dds.k3003.service;
 
+import ar.edu.utn.dds.k3003.documentos.IdentificadorDoc;
 import ar.edu.utn.dds.k3003.documentos.ProductoDoc;
 import ar.edu.utn.dds.k3003.dtos.donaciones.*;
 import ar.edu.utn.dds.k3003.documentos.DonacionDoc;
@@ -31,6 +32,15 @@ public class DonacionesDataMapper {
                 doc.getDescripcion(),
                 doc.getCategoriaId(),
                 doc.getIdentificadorId()
+        );
+    }
+
+    public IdentificadorDTO toIdentificadorDTO(IdentificadorDoc doc) {
+        if (doc == null) return null;
+        return new IdentificadorDTO(
+                doc.getIdentificadorId(),
+                doc.getTipo(),
+                doc.getDescripcion()
         );
     }
 
