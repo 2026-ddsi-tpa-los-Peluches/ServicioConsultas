@@ -64,7 +64,10 @@ public class RabbitConfig {
                 "entidad-creada", "entidad-actualizada",
 
                 // CATEGORIA
-                "categoria-creada", "categoria-creada"
+                "categoria-creada", "categoria-creada",
+
+                // IDENTIFICADOR
+                "identificador-creado", "identificador-eliminado"
         )) {
             Queue cola = QueueBuilder.durable("consultas." + nombre).build();
             elementos.add(cola);

@@ -14,6 +14,8 @@ import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionEstadoActualizadoEvent
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.entidadEvents.EntidadBeneficaActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.entidadEvents.EntidadBeneficaCreadaEvent;
+import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorCreadoEvent;
+import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorEliminadoEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.*;
@@ -849,4 +851,38 @@ public class ConsultasListener {
 
         System.out.println("CategoriaDoc eliminada de MongoDB para el ID: " + e.id());
     }
+
+
+    // --------------------
+    //    IDENTIFICADORES
+    // --------------------
+    @RabbitListener(queues = "consultas.identificador-creado")
+    public void onIdentificadorCreado(IdentificadorCreadoEvent e) {
+        String identificadorIdStr = String.valueOf(e.id());
+
+        Query query = new Query(Criteria.where("identificadorId").is(identificadorIdStr));
+
+        Update update = new Update()
+                .set("identificadorId", identificadorIdStr)
+                .set("tipo", e.tipo())
+                .set("descripcion", e.descripcion())
+                .set("actualizadoEn", e.fechaEvento());
+
+        // Upsert asegura crear el registro si no existe o actualizarlo si ya existiera
+        mongo.upsert(query, update, IdentificadorDoc.class);
+
+        System.out.println("IdentificadorDoc sincronizado en MongoDB para el ID: " + identificadorIdStr);
+    }
+
+    @RabbitListener(queues = "consultas.identificador-eliminado")
+    public void onIdentificadorEliminado(IdentificadorEliminadoEvent e) {
+        Query query = new Query(Criteria.where("identificadorId").is(String.valueOf(e.id())));
+
+        // Removemos el documento de MongoDB
+        mongo.remove(query, IdentificadorDoc.class);
+
+        System.out.println("IdentificadorDoc eliminado de MongoDB para el ID: " + e.id());
+    }
+
+
 }
