@@ -4,6 +4,8 @@ import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.documentos.*;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionCreadaEvent;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionEstadoEvent;
+import ar.edu.utn.dds.k3003.events.categoriaEvents.CategoriaCreadaEvent;
+import ar.edu.utn.dds.k3003.events.categoriaEvents.CategoriaEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.depositoEvents.*;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEvent;
@@ -813,5 +815,38 @@ public class ConsultasListener {
         );
 
         System.out.println("EntidadDoc actualizada mediante evento en MongoDB para el ID: " + e.id());
+    }
+
+
+    // ---------------
+    //    CATEGORIAS
+    // ---------------
+
+    @RabbitListener(queues = "consultas.categoria-creada")
+    public void onCategoriaCreada(CategoriaCreadaEvent e) {
+        String categoriaIdStr = String.valueOf(e.id());
+
+        Query query = new Query(Criteria.where("categoriaId").is(categoriaIdStr));
+
+        Update update = new Update()
+                .set("categoriaId", categoriaIdStr)
+                .set("nombre", e.nombre())
+                .set("descripcion", e.descripcion())
+                .set("actualizadoEn", e.fechaEvento());
+
+        // Upsert asegura que si el documento no existe lo cree y si ya está lo actualice
+        mongo.upsert(query, update, CategoriaDoc.class);
+
+        System.out.println("CategoriaDoc sincronizada en MongoDB para el ID: " + categoriaIdStr);
+    }
+
+    @RabbitListener(queues = "consultas.categoria-eliminada")
+    public void onCategoriaEliminada(CategoriaEliminadaEvent e) {
+        Query query = new Query(Criteria.where("categoriaId").is(String.valueOf(e.id())));
+
+        // Eliminamos el documento de la categoría de Mongo
+        mongo.remove(query, CategoriaDoc.class);
+
+        System.out.println("CategoriaDoc eliminada de MongoDB para el ID: " + e.id());
     }
 }
