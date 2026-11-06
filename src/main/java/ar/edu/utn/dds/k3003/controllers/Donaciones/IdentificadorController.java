@@ -2,7 +2,7 @@ package ar.edu.utn.dds.k3003.controllers.Donaciones;
 
 import ar.edu.utn.dds.k3003.Fachada;
 import ar.edu.utn.dds.k3003.catedra.dtos.donaciones.IdentificadorDTO;
-import ar.edu.utn.dds.k3003.exceptions.donaciones.IdentificadorNoEncontradoException;
+import ar.edu.utn.dds.k3003.exceptions.IdentificadorNoEncontradoException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

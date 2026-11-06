@@ -1,5 +1,6 @@
 package ar.edu.utn.dds.k3003.service;
 
+import ar.edu.utn.dds.k3003.documentos.ProductoDoc;
 import ar.edu.utn.dds.k3003.dtos.donaciones.*;
 import ar.edu.utn.dds.k3003.documentos.DonacionDoc;
 import org.springframework.stereotype.Component;
@@ -20,4 +21,17 @@ public class DonacionesDataMapper {
                 doc.estado() != null ? EstadoDonacionEnum.valueOf(doc.estado()) : null // 7. estado
         );
     }
+
+
+    public ProductoDTO toProductoDTO(ProductoDoc doc) {
+        if (doc == null) return null;
+        return new ProductoDTO(
+                doc.getProductoId() != null ? doc.getProductoId() : doc.getId(),
+                doc.getNombre(),
+                doc.getDescripcion(),
+                doc.getCategoriaId(),
+                doc.getIdentificadorId()
+        );
+    }
+
 }
