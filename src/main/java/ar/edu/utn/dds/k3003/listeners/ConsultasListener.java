@@ -6,6 +6,8 @@ import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.depositoEvents.*;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEvent;
+import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionCreadaEvent;
+import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionEstadoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
@@ -299,24 +301,30 @@ public class ConsultasListener {
     //------------------------------
     //      DONACION
     //------------------------------
-    @RabbitListener(queues = "consultas.donacion")
-    public void onDonacion(DonacionActualizadaEvent e) {
-        List<DonacionDoc.QuejaDonacionDoc> quejas = e.quejas() == null ? List.of() : e.quejas();
-        boolean aplicado = actualizador.aplicarSiEsMasNuevo(DonacionDoc.class, e.donacionId(),
-                "ultimaActualizacion", e.fechaEvento(),
-                new Update()
-                        .set("donadorId", e.donadorId())
-                        .set("productoId", e.productoId())
-                        .set("nombreProducto", e.nombreProducto())
-                        .set("categoriaProducto", e.categoriaProducto())
-                        .set("subcategoriaProducto", e.subcategoriaProducto())
-                        .set("cantidad", e.cantidad())
-                        .set("estado", e.estado())
-                        .set("fechaIngreso", e.fechaIngreso())
-                        .set("quejas", quejas));
-        if (aplicado) {
-            resumen.recalcular(e.donadorId());
-        }
+
+
+    @RabbitListener(queues = "consultas.donacion-creada")
+    public void onDonacionCreada(DonacionCreadaEvent e) {
+        Query query = new Query(Criteria.where("_id").is(e.donacionId()));
+
+        // Preparamos los cambios o datos iniciales (la queja arranca explícitamente en null)
+        Update update = new Update()
+                .setOnInsert("_id", e.donacionId())
+                .set("donadorId", e.donadorId())
+                .set("productoId", e.productoId())
+                .set("nombreProducto", e.nombreProducto())
+                .set("categoriaProducto", e.categoriaProducto())
+                .set("subcategoriaProducto", e.subcategoriaProducto())
+                .set("cantidad", e.cantidad())
+                .set("estado", e.estado())
+                .set("fechaIngreso", e.fechaIngreso())
+                .set("queja", null) // <-- Arranca en null tal como pediste
+                .set("ultimaActualizacion", e.ultimaActualizacion());
+
+        // Usamos upsert para asegurar que si el evento llega duplicado no rompa, sino que actualice/inserte de forma idempotente
+        mongo.upsert(query, update, DonacionDoc.class);
+
+        System.out.println(" [x] Donación creada e indexada en MongoDB - ID: " + e.donacionId());
     }
 
 
@@ -342,6 +350,22 @@ public class ConsultasListener {
         mongo.updateFirst(query, update, DonacionDoc.class);
 
         System.out.println("Queja registrada y estado actualizado a CONQUEJA en DonacionDoc ID: " + e.donacionId());
+    }
+
+    @RabbitListener(queues = "consultas.donacion-estado-actualizado")
+    public void onDonacionEstadoActualizado(DonacionEstadoActualizadoEvent e) {
+
+        // 1. Buscamos la donación en la colección "donaciones" por su ID
+        Query query = new Query(Criteria.where("_id").is(e.donacionId()));
+
+        // 2. Actualizamos el estado y el timestamp de última actualización
+        Update update = new Update()
+                .set("estado", e.nuevoEstado())
+                .set("ultimaActualizacion", e.fechaEvento());
+
+        mongo.updateFirst(query, update, DonacionDoc.class);
+
+        System.out.println("Estado actualizado a '" + e.nuevoEstado() + "' en DonacionDoc ID: " + e.donacionId());
     }
 
 
