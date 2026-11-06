@@ -1,6 +1,6 @@
 package ar.edu.utn.dds.k3003.documentos;
 
-import ar.edu.utn.dds.k3003.catedra.dtos.donaciones.TipoIdentificadorEnum;
+import ar.edu.utn.dds.k3003.dtos.donaciones.TipoIdentificadorEnum;
 import lombok.Data;
 import lombok.Getter;
 import lombok.Setter;
