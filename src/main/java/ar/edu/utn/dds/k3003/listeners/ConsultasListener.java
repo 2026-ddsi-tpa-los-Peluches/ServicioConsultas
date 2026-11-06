@@ -2,7 +2,8 @@ package ar.edu.utn.dds.k3003.listeners;
 
 import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.documentos.*;
-import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionActualizadaEvent;
+import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionCreadaEvent;
+import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionEstadoEvent;
 import ar.edu.utn.dds.k3003.events.depositoEvents.*;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEvent;
@@ -29,6 +30,7 @@ import org.springframework.stereotype.Component;
 
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -81,34 +83,30 @@ public class ConsultasListener {
                 new Update().set("estado", e.estado()));
     }
 
-    @RabbitListener(queues = "consultas.donador-set-mision")
-    public void onSetMisionDonador(DonadorMisionEvent e) { // Reemplaza 'TuEventoDeMision' por la clase de evento real que uses
+    @RabbitListener(queues = "consultas.donador-mision-asignar")
+    public void onAsignarMisionDonador(AsignarMisionDonadorEvent e) {
+        String donadorIdStr = String.valueOf(e.getDonadorId());
 
-        // Convertimos el ID a String por si en Mongo lo guardás como texto (como venís haciendo)
-        String donadorIdStr = String.valueOf(e.getDonadorId()); // O e.donadorId() si tu evento es un record
-
-        // 1. Armamos la query para buscar al donador por su ID
         Query query = new Query(Criteria.where("donadorId").is(donadorIdStr));
 
-        // 2. Creamos el Update especificando SOLAMENTE el campo que querés modificar
-        Update update = new Update().set("misionActual", e.getMisionActualId()); // Cambiá 'getMisionId()' por el método que traiga el ID de la misión en tu evento
+        // Creamos la misión actual embebida de tipo MisionActualDonadorDoc
+        DonadorDoc.MisionActualDonadorDoc nuevaMisionDoc = new DonadorDoc.MisionActualDonadorDoc(
+                e.getMisionId(),
+                e.getNombre(),
+                e.getInsigniaId(),
+                e.getTipoMision(),
+                e.getProgreso(),
+                e.getObjetivo(),
+                e.getCategoriaInicio(),
+                e.getCategoriaFin()
+        );
 
-        // 3. Ejecutamos la actualización en MongoDB (actualiza el primer documento que coincida)
+        // Sobrescribe directamente la misión actual sin registrar nada en el historial
+        Update update = new Update().set("misionActual", nuevaMisionDoc);
+
         mongo.updateFirst(query, update, DonadorDoc.class);
-
-        System.out.println(" [x] Misión actual actualizada para el donador ID: " + donadorIdStr);
+        System.out.println(" [x] Misión actual sobresignada/asignada para el donador ID: " + donadorIdStr);
     }
-
-//    @RabbitListener(queues = "consultas.donador-incentivos")
-//    public void onDonadorIncentivos(DonadorActualizadoEvent e) {
-//        actualizador.aplicarSiEsMasNuevo(DonadorDoc.class, e.donadorId(),
-//                "incentivosActualizadoEn", e.fechaEvento(),
-//                new Update()
-//                        .set("categoriaActual", e.categoriaActual())
-//                        .set("historialCategorias", e.historialCategorias())
-//                        .set("insignias", e.insignias())
-//                        .set("misionActual", e.misionActual()));
-//    }
 
 
 
@@ -116,10 +114,9 @@ public class ConsultasListener {
     @RabbitListener(queues = "consultas.donador-categoria")
     public void onCategoriaActualizada(DonadorCategoriaActualizadaEvent e) {
         // 1. Creamos el registro histórico con la categoría y su fecha
-        CategoriaHistoricaDTO registroHistorico = new CategoriaHistoricaDTO(
-                e.nuevaCategoria(),
-                e.fechaCambio() // Asegúrate de que coincida si es Instant o LocalDateTime
-        );
+        DonadorDoc.CategoriaHistoricaDoc registroHistorico = new DonadorDoc.CategoriaHistoricaDoc();
+        registroHistorico.setCategoria(e.nuevaCategoria());
+        registroHistorico.setFecha(e.fechaCambio());
 
         // 2. Preparamos los cambios que aplican si el evento es el más nuevo (actualiza el estado actual)
         Update cambiosPrincipal = new Update()
@@ -136,9 +133,6 @@ public class ConsultasListener {
                 cambiosPrincipal
         );
 
-        // 4. ¿Qué pasa si el evento que llegó era MÁS VIEJO que el actual?
-        // El actualizador devuelve false porque no pisó el estado actual, PERO de todas formas
-        // queremos asegurarnos de que el evento viejo no se pierda del historial cronológico.
         if (!aplicoEstadoActual) {
             Query querySoloHistorial = new Query();
             Update updateHistorial = new Update().push("historialCategorias", registroHistorico);
@@ -163,17 +157,23 @@ public class ConsultasListener {
     // 4) cambiar mision del donador
     @RabbitListener(queues = "consultas.mision-donador-completada")
     public void onMisionCompletada(MisionDonadorCompletadaEvent e) {
-        // 1. Buscamos al donador por su ID
         Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
 
-        // 2. Preparamos la actualización:
-        // - Seteamos la misión actual en null (porque ya la terminó)
-        // - Hacemos un push de la misión al historial con su nombre y fecha
+        // CORRECCIÓN: Mapeamos manualmente al objeto MisionHistoricaDonadorDoc de tu DonadorDoc
+        // porque el evento trae un DTO y tu documento almacena el subdocumento local.
+        DonadorDoc.MisionHistoricaDonadorDoc historialDoc = new DonadorDoc.MisionHistoricaDonadorDoc();
+        historialDoc.setMisionId(e.getMisionCompletada().misionId());
+        historialDoc.setNombre(e.getMisionCompletada().nombre());
+
+        // Conversión segura de Instant a LocalDateTime requerida por MisionHistoricaDonadorDoc
+        LocalDateTime fechaCompletada = e.getMisionCompletada().completadaEn();
+
+        historialDoc.setCompletadaEn(fechaCompletada);
+
         Update update = new Update()
                 .set("misionActual", null)
-                .push("misionesCompletadasHistorial", e.getMisionCompletada());
+                .push("misionesCompletadasHistorial", historialDoc);
 
-        // 3. Ejecutamos la actualización en MongoDB
         mongo.updateFirst(query, update, DonadorDoc.class);
     }
 
@@ -206,19 +206,14 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.donador-queja-registrada")
     public void onQuejaRegistrada(QuejaDonadorRegistradaEvent evento) {
-
-        // Mapeamos el evento al subdocumento de Mongo
         DonadorDoc.QuejaDoc quejaDoc = new DonadorDoc.QuejaDoc();
         quejaDoc.setQuejaId(evento.quejaId());
         quejaDoc.setDonacionId(evento.donacionId());
         quejaDoc.setMotivo(evento.motivo());
         quejaDoc.setFecha(evento.fecha());
 
-        // Buscamos por donadorID (convertido a Long o String según cómo lo guardes)
-        Long donadorIdLong = Long.valueOf(evento.donadorId());
-        Query query = new Query(Criteria.where("donadorID").is(donadorIdLong));
+        Query query = new Query(Criteria.where("donadorId").is(String.valueOf(evento.donadorId())));
 
-        // $push añade el elemento al array "quejas" de forma atómica
         Update update = new Update().push("quejas", quejaDoc);
 
         mongo.upsert(query, update, DonadorDoc.class);
@@ -548,23 +543,6 @@ public class ConsultasListener {
     }
 
 
-
-
-    // --------------
-    //      STOCK
-    // -------------
-    @RabbitListener(queues = "consultas.stock")
-    public void onStock(StockActualizadoEvent e) {
-        actualizador.aplicarSiEsMasNuevo(StockDoc.class,
-                e.productoId() + "-" + e.depositoId(),
-                "ultimaActualizacion", e.fechaEvento(),
-                new Update()
-                        .set("productoId", e.productoId())
-                        .set("depositoId", e.depositoId())
-                        .set("nombreDeposito", e.nombreDeposito())
-                        .set("cantidad", e.cantidad()));
-    }
-
     // ---------------
     //    DEPOSITO
     // ---------------
@@ -752,30 +730,41 @@ public class ConsultasListener {
     // ------------
     //  ASIGNACION
     // ------------
-    @RabbitListener(queues = "consultas.asignacion")
-    public void onAsignacion(AsignacionActualizadaEvent e) {
-        boolean aplicado = actualizador.aplicarSiEsMasNuevo(AsignacionDoc.class, e.asignacionId(),
-                "ultimaActualizacion", e.fechaEvento(),
-                new Update()
-                        .set("paqueteId", e.paqueteId())
-                        .set("necesidadId", e.necesidadId())
-                        .set("depositoId", e.depositoId())
-                        .set("donacionId", e.donacionId())
-                        .set("entidadId", e.entidadId())
-                        .set("unidades", e.unidades())
-                        .set("estado", e.estado())
-                        .set("fechaAsignacion", e.fechaAsignacion())
-                        .set("fechaIngresoDonacion", e.fechaIngresoDonacion())
-                        .set("fechaEntrega", e.fechaEntrega()));
-        if (aplicado) {
-            DonacionDoc donacion = mongo.findById(e.donacionId(), DonacionDoc.class);
-            if (donacion != null) {
-                resumen.recalcular(donacion.donadorId());
-            }
-        }
+    @RabbitListener(queues = "consultas.asignacion-creada")
+    public void onAsignacionCreada(AsignacionCreadaEvent e) {
+        Query query = new Query(Criteria.where("_id").is(e.asignacionId()));
+
+        Update update = new Update()
+                .setOnInsert("_id", e.asignacionId())
+                .set("asignacionRealizadaPor", e.asignacionRealizadaPor())
+                .set("paqueteId", e.paqueteId())
+                .set("necesidadId", e.necesidadId())
+                .set("depositoId", e.depositoId())
+                .set("donacionId", e.donacionId())
+                .set("entidadId", e.entidadId())
+                .set("unidades", e.unidades())
+                .set("estado", e.estado())
+                .set("fechaAsignacion", e.fechaAsignacion())
+                .set("ultimaActualizacion", e.fechaEvento());
+
+        mongo.upsert(query, update, AsignacionDoc.class);
+        System.out.println("Asignación creada e indexada en MongoDB - ID: " + e.asignacionId());
     }
 
+    @RabbitListener(queues = "consultas.asignacion-estado")
+    public void onAsignacionEstadoActualizado(AsignacionEstadoEvent e) {
+        Query query = new Query(Criteria.where("_id").is(e.getAsignacionID()));
 
+        Update update = new Update()
+                .set("estado", e.getEstado())
+                .set("ultimaActualizacion", e.getFechaEvento());
 
+        // Si el estado pasa a COMPLETADA, podemos aprovechar para registrar opcionalmente la fecha de entrega
+        if ("COMPLETADA".equalsIgnoreCase(e.getEstado())) {
+            update.set("fechaEntrega", e.getFechaEvento());
+        }
 
+        mongo.updateFirst(query, update, AsignacionDoc.class);
+        System.out.println("Estado de asignación actualizado a '" + e.getEstado() + "' en MongoDB - ID: " + e.getAsignacionID());
+    }
 }

@@ -11,6 +11,7 @@ import org.springframework.data.mongodb.core.mapping.Document;
 
 import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -38,12 +39,12 @@ public class DonadorDoc {
 
   // Categoria de un donador
   String categoriaActual;
-  List<CategoriaHistoricaDTO> historialCategorias;
+  List<CategoriaHistoricaDoc> historialCategorias;
 
 
   // Mision de un Donador
-  MisionActual misionActual;
-  List<MisionHistoricaDTO> misionesCompletadasHistorial = new ArrayList<>();
+  MisionActualDonadorDoc misionActual;
+  List<MisionHistoricaDonadorDoc> misionesCompletadasHistorial = new ArrayList<>();
 
 
   // Insignias de un Donador
@@ -65,6 +66,34 @@ public class DonadorDoc {
 
   public DonadorDoc() {}
 
+
+  @Data
+  public static class MisionActualDonadorDoc {
+    private String misionId;
+    private String nombre;
+    private String insigniaId;
+    private String tipoMision;
+    private Integer progreso;
+    private Integer objetivo;
+    private String categoriaInicio;
+    private String categoriaFin;
+
+    public MisionActualDonadorDoc() {}
+
+    public MisionActualDonadorDoc(String misionId, String nombre, String insigniaId, String tipoMision,
+                                  Integer progreso, Integer objetivo, String categoriaInicio, String categoriaFin) {
+      this.misionId = misionId;
+      this.nombre = nombre;
+      this.insigniaId = insigniaId;
+      this.tipoMision = tipoMision;
+      this.progreso = progreso;
+      this.objetivo = objetivo;
+      this.categoriaInicio = categoriaInicio;
+      this.categoriaFin = categoriaFin;
+    }
+  }
+
+
   @Data
   public static class QuejaDoc {
     private Integer quejaId;
@@ -78,6 +107,19 @@ public class DonadorDoc {
     private String entidadId;
     private String razonSocialEntidad;
     private Integer unidadesEntregadas;
+  }
+
+  @Data
+  public static class MisionHistoricaDonadorDoc {
+    String misionId;
+    String nombre;
+    LocalDateTime completadaEn;
+  }
+
+  @Data
+  public static class CategoriaHistoricaDoc {
+    String categoria;
+    Instant fecha;
   }
 
 }

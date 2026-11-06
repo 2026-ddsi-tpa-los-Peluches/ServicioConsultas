@@ -8,17 +8,16 @@ import java.time.Instant;
 @Document("asignaciones")
 public record AsignacionDoc(
         @Id String id,
+        String asignacionRealizadaPor,
         String paqueteId,
         String necesidadId,
         String depositoId,
         String donacionId,
         String entidadId,
         int unidades,
-        String estado,                 // ASIGNADA, COMPLETADA
+
+        String estado,                 // ASIGNADA, COMPLETADA, etc.
+
         Instant fechaAsignacion,
-        Instant fechaIngresoDonacion,
-        Instant fechaEntrega,          // null hasta que se completa
         Instant ultimaActualizacion
 ) {}
-
-
