@@ -30,6 +30,7 @@ public class RabbitConfig {
                 "mision-donador-completada","mision-donador-limpliada", "mision-donador-progreso",
                 "insignia-donador-agregada", "insignia-donador-quitada",
                 "donador-donacion-estado", "donador-queja-registrada", "donador-entidad-donada",
+                "donador-mision-asignar",
 
                 //PRODUCTO
                 "producto-creado", "producto-actualizado", "producto-eliminado", "producto-stock-modificado",
@@ -48,17 +49,13 @@ public class RabbitConfig {
                 "necesidad-cantidad-recibida", "necesidad-asignacion-pendiente", "necesidad-asignacion-hecha",
                 "necesidad-creada", "necesidad-actualizada", "necesidad-eliminada","necesidad-satisfecha",
 
-
-                // STOCK
-                "stock",
-
                 // DEPOSITO
                 "deposito-creado","deposito-eliminado","deposito-algoritmo-actualizado",
                 "deposito-paquete-actualizado", "deposito-paquete-agregado", "deposito-entidad-atendida",
                 "deposito-cantidad-asignacion-estado", "deposito-donacion-ingresada", "deposito-donacion-entregada",
 
                 // ASIGNACION
-                "asignacion",
+                "asignacion-creada", "asignacion-estado",
 
                 //MISION
                 "mision-agregada", "mision-eliminada"
