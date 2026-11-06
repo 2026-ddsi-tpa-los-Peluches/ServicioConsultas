@@ -58,7 +58,10 @@ public class RabbitConfig {
                 "asignacion-creada", "asignacion-estado",
 
                 //MISION
-                "mision-agregada", "mision-eliminada"
+                "mision-agregada", "mision-eliminada",
+
+                // ENTIDAD BENEFICA
+                "entidad-creada", "entidad-actualizada"
         )) {
             Queue cola = QueueBuilder.durable("consultas." + nombre).build();
             elementos.add(cola);

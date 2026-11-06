@@ -10,6 +10,8 @@ import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEven
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionCreadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionEstadoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
+import ar.edu.utn.dds.k3003.events.entidadEvents.EntidadBeneficaActualizadaEvent;
+import ar.edu.utn.dds.k3003.events.entidadEvents.EntidadBeneficaCreadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.*;
@@ -159,8 +161,7 @@ public class ConsultasListener {
     public void onMisionCompletada(MisionDonadorCompletadaEvent e) {
         Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
 
-        // CORRECCIÓN: Mapeamos manualmente al objeto MisionHistoricaDonadorDoc de tu DonadorDoc
-        // porque el evento trae un DTO y tu documento almacena el subdocumento local.
+
         DonadorDoc.MisionHistoricaDonadorDoc historialDoc = new DonadorDoc.MisionHistoricaDonadorDoc();
         historialDoc.setMisionId(e.getMisionCompletada().misionId());
         historialDoc.setNombre(e.getMisionCompletada().nombre());
@@ -767,5 +768,50 @@ public class ConsultasListener {
 
         mongo.updateFirst(query, update, AsignacionDoc.class);
         System.out.println("Estado de asignación actualizado a '" + e.getEstado() + "' en MongoDB - ID: " + e.getAsignacionID());
+    }
+
+
+    // -----------------------
+    //      ENTIDAD BENEFICA
+    // -----------------------
+
+    @RabbitListener(queues = "consultas.entidad-creada")
+    public void onEntidadCreada(EntidadBeneficaCreadaEvent e) {
+        String entidadIdStr = String.valueOf(e.id());
+
+        Query query = new Query(Criteria.where("entidadId").is(entidadIdStr));
+
+        Update update = new Update()
+                .set("entidadId", entidadIdStr)
+                .set("razonSocial", e.razonSocial())
+                .set("domicilio", e.domicilio())
+                .set("telefono", e.telefono())
+                .set("email", e.correo())
+                .set("estadoActualizadoEn", e.fechaEvento());
+
+        // Upsert por si el evento llega antes o después de la sincro inicial
+        mongo.upsert(query, update, EntidadDoc.class);
+
+        System.out.println("EntidadDoc sincronizada en MongoDB para el ID: " + entidadIdStr);
+    }
+
+    @RabbitListener(queues = "consultas.entidad-actualizada")
+    public void onEntidadActualizada(EntidadBeneficaActualizadaEvent e) {
+        Update update = new Update();
+        if (e.razonSocial() != null) update.set("razonSocial", e.razonSocial());
+        if (e.domicilio() != null) update.set("domicilio", e.domicilio());
+        if (e.telefono() != null) update.set("telefono", e.telefono());
+        if (e.correo() != null) update.set("email", e.correo());
+
+        // Usamos tu actualizador inteligente para evitar pisar con eventos viejos desordenados en red
+        actualizador.aplicarSiEsMasNuevo(
+                EntidadDoc.class,
+                String.valueOf(e.id()),
+                "estadoActualizadoEn",
+                e.fechaEvento(),
+                update
+        );
+
+        System.out.println("EntidadDoc actualizada mediante evento en MongoDB para el ID: " + e.id());
     }
 }
