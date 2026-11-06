@@ -10,7 +10,7 @@ import java.time.LocalDate;
 public record DonacionDoc(
         @Id String id,
 
-
+        // atributos generales de una donacion
         String donadorId,
         String productoId,
         String nombreProducto,
@@ -18,11 +18,19 @@ public record DonacionDoc(
         String subcategoriaProducto,
         int cantidad,
 
+
+        // estado de una donacion
         String estado,              // INGRESADA, ACEPTADA, CONQUEJA
 
+
+        // ingreso de una donacion
         Instant fechaIngreso,
-        Queja queja,
+
+        // queja de una donacion
+        QuejaDonacionDoc queja,
+
+
         Instant ultimaActualizacion
 ) {
-    public record Queja(String quejaId, LocalDate fecha, String descripcion) {}
+    public record QuejaDonacionDoc(String quejaId, LocalDate fecha, String descripcion) {}
 }

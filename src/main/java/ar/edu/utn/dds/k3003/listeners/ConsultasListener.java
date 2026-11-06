@@ -5,6 +5,7 @@ import ar.edu.utn.dds.k3003.documentos.*;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.depositoEvents.*;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
+import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
@@ -300,7 +301,7 @@ public class ConsultasListener {
     //------------------------------
     @RabbitListener(queues = "consultas.donacion")
     public void onDonacion(DonacionActualizadaEvent e) {
-        List<DonacionDoc.Queja> quejas = e.quejas() == null ? List.of() : e.quejas();
+        List<DonacionDoc.QuejaDonacionDoc> quejas = e.quejas() == null ? List.of() : e.quejas();
         boolean aplicado = actualizador.aplicarSiEsMasNuevo(DonacionDoc.class, e.donacionId(),
                 "ultimaActualizacion", e.fechaEvento(),
                 new Update()
@@ -316,6 +317,31 @@ public class ConsultasListener {
         if (aplicado) {
             resumen.recalcular(e.donadorId());
         }
+    }
+
+
+    @RabbitListener(queues = "consultas.donacion-queja")
+    public void onDonacionConQueja(DonacionConQuejaRegistradaEvent e) {
+
+        // 1. Buscamos la donación en la colección "donaciones" por su ID
+        Query query = new Query(Criteria.where("_id").is(e.donacionId()));
+
+        // 2. Creamos el subdocumento de la queja respetando el record que definiste
+        DonacionDoc.QuejaDonacionDoc nuevaQueja = new DonacionDoc.QuejaDonacionDoc(
+                e.quejaId(),
+                e.fechaQueja(),
+                e.descripcionQueja()
+        );
+
+        // 3. Actualizamos el estado a CONQUEJA, asignamos la queja y actualizamos el timestamp
+        Update update = new Update()
+                .set("estado", e.nuevoEstado())
+                .set("queja", nuevaQueja)
+                .set("ultimaActualizacion", e.fechaEvento());
+
+        mongo.updateFirst(query, update, DonacionDoc.class);
+
+        System.out.println("Queja registrada y estado actualizado a CONQUEJA en DonacionDoc ID: " + e.donacionId());
     }
 
 

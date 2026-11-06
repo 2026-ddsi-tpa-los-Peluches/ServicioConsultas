@@ -7,7 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/analitica/calidad-donadores")
+@RequestMapping("/analitica/donaciones")
 public class DonacionesAnaliticaController {
 
     private final DonacionesAnalyticsService analyticsService;

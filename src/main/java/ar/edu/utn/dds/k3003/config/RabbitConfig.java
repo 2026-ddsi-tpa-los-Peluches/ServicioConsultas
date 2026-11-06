@@ -39,7 +39,7 @@ public class RabbitConfig {
                 "insignia-agregada", "insignia-eliminada",
 
                 // DONACION
-                "donacion",
+                "donacion", "donacion-queja",
 
                 // PRODUCTO
                 "producto-creado", "producto-actualizado", "producto-eliminado",
