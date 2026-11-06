@@ -20,18 +20,14 @@ public class EntidadDoc {
     private String telefono;
     private String email;
 
-    // Campos adicionales para consultas complejas o auditoría
-    private Instant estadoActualizadoEn;
-    private String estado; // Por si maneja algún estado operativo
 
     public EntidadDoc() {}
 
-    public EntidadDoc(String entidadId, String razonSocial, String domicilio, String telefono, String email, Instant estadoActualizadoEn) {
+    public EntidadDoc(String entidadId, String razonSocial, String domicilio, String telefono, String email) {
         this.entidadId = entidadId;
         this.razonSocial = razonSocial;
         this.domicilio = domicilio;
         this.telefono = telefono;
         this.email = email;
-        this.estadoActualizadoEn = estadoActualizadoEn;
     }
 }
