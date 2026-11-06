@@ -8,4 +8,4 @@ import java.util.List;
 public record DonacionActualizadaEvent(
         String donacionId, String donadorId, String productoId, String nombreProducto,
         String categoriaProducto, String subcategoriaProducto, int cantidad, String estado,
-        Instant fechaIngreso, List<DonacionDoc.Queja> quejas, Instant fechaEvento) {}
+        Instant fechaIngreso, List<DonacionDoc.QuejaDonacionDoc> quejas, Instant fechaEvento) {}

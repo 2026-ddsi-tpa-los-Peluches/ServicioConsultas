@@ -3,17 +3,19 @@ package ar.edu.utn.dds.k3003.listeners;
 import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.documentos.*;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionActualizadaEvent;
-import ar.edu.utn.dds.k3003.events.depositoEvents.DepositoActualizadoEvent;
+import ar.edu.utn.dds.k3003.events.depositoEvents.*;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
+import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEvent;
+import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionCreadaEvent;
+import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionEstadoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
-import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadActualizadaEvent;
-import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionHecha;
-import ar.edu.utn.dds.k3003.events.necesidadEvents.NecesidadAsignacionPendiente;
+import ar.edu.utn.dds.k3003.events.necesidadEvents.*;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoCreadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoEliminadoEvent;
+import ar.edu.utn.dds.k3003.events.productoEvents.StockProductoModificadoEvent;
 import ar.edu.utn.dds.k3003.events.stockEvents.StockActualizadoEvent;
 import ar.edu.utn.dds.k3003.service.Actualizador;
 import ar.edu.utn.dds.k3003.service.ResumenDonador;
@@ -27,6 +29,7 @@ import org.springframework.stereotype.Component;
 
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -316,24 +319,71 @@ public class ConsultasListener {
     //------------------------------
     //      DONACION
     //------------------------------
-    @RabbitListener(queues = "consultas.donacion")
-    public void onDonacion(DonacionActualizadaEvent e) {
-        List<DonacionDoc.Queja> quejas = e.quejas() == null ? List.of() : e.quejas();
-        boolean aplicado = actualizador.aplicarSiEsMasNuevo(DonacionDoc.class, e.donacionId(),
-                "ultimaActualizacion", e.fechaEvento(),
-                new Update()
-                        .set("donadorId", e.donadorId())
-                        .set("productoId", e.productoId())
-                        .set("nombreProducto", e.nombreProducto())
-                        .set("categoriaProducto", e.categoriaProducto())
-                        .set("subcategoriaProducto", e.subcategoriaProducto())
-                        .set("cantidad", e.cantidad())
-                        .set("estado", e.estado())
-                        .set("fechaIngreso", e.fechaIngreso())
-                        .set("quejas", quejas));
-        if (aplicado) {
-            resumen.recalcular(e.donadorId());
-        }
+
+
+    @RabbitListener(queues = "consultas.donacion-creada")
+    public void onDonacionCreada(DonacionCreadaEvent e) {
+        Query query = new Query(Criteria.where("_id").is(e.donacionId()));
+
+        // Preparamos los cambios o datos iniciales (la queja arranca explícitamente en null)
+        Update update = new Update()
+                .setOnInsert("_id", e.donacionId())
+                .set("donadorId", e.donadorId())
+                .set("productoId", e.productoId())
+                .set("nombreProducto", e.nombreProducto())
+                .set("categoriaProducto", e.categoriaProducto())
+                .set("subcategoriaProducto", e.subcategoriaProducto())
+                .set("cantidad", e.cantidad())
+                .set("estado", e.estado())
+                .set("fechaIngreso", e.fechaIngreso())
+                .set("queja", null) // <-- Arranca en null tal como pediste
+                .set("ultimaActualizacion", e.ultimaActualizacion());
+
+        // Usamos upsert para asegurar que si el evento llega duplicado no rompa, sino que actualice/inserte de forma idempotente
+        mongo.upsert(query, update, DonacionDoc.class);
+
+        System.out.println(" [x] Donación creada e indexada en MongoDB - ID: " + e.donacionId());
+    }
+
+
+    @RabbitListener(queues = "consultas.donacion-queja")
+    public void onDonacionConQueja(DonacionConQuejaRegistradaEvent e) {
+
+        // 1. Buscamos la donación en la colección "donaciones" por su ID
+        Query query = new Query(Criteria.where("_id").is(e.donacionId()));
+
+        // 2. Creamos el subdocumento de la queja respetando el record que definiste
+        DonacionDoc.QuejaDonacionDoc nuevaQueja = new DonacionDoc.QuejaDonacionDoc(
+                e.quejaId(),
+                e.fechaQueja(),
+                e.descripcionQueja()
+        );
+
+        // 3. Actualizamos el estado a CONQUEJA, asignamos la queja y actualizamos el timestamp
+        Update update = new Update()
+                .set("estado", e.nuevoEstado())
+                .set("queja", nuevaQueja)
+                .set("ultimaActualizacion", e.fechaEvento());
+
+        mongo.updateFirst(query, update, DonacionDoc.class);
+
+        System.out.println("Queja registrada y estado actualizado a CONQUEJA en DonacionDoc ID: " + e.donacionId());
+    }
+
+    @RabbitListener(queues = "consultas.donacion-estado-actualizado")
+    public void onDonacionEstadoActualizado(DonacionEstadoActualizadoEvent e) {
+
+        // 1. Buscamos la donación en la colección "donaciones" por su ID
+        Query query = new Query(Criteria.where("_id").is(e.donacionId()));
+
+        // 2. Actualizamos el estado y el timestamp de última actualización
+        Update update = new Update()
+                .set("estado", e.nuevoEstado())
+                .set("ultimaActualizacion", e.fechaEvento());
+
+        mongo.updateFirst(query, update, DonacionDoc.class);
+
+        System.out.println("Estado actualizado a '" + e.nuevoEstado() + "' en DonacionDoc ID: " + e.donacionId());
     }
 
 
@@ -381,45 +431,86 @@ public class ConsultasListener {
         System.out.println(" [x] ProductoDoc eliminado de MongoDB para ID: " + e.getProductoId());
     }
 
+
+    @RabbitListener(queues = "consultas.producto-stock-modificado")
+    public void onStockModificado(StockProductoModificadoEvent e) {
+
+        // 1. Verificamos si el producto ya tiene registrado este depósito en su lista
+        Query queryConDeposito = new Query(
+                Criteria.where("productoId").is(e.getProductoId())
+                        .and("depositosStock.depositoId").is(e.getDepositoId())
+        );
+
+        boolean yaExisteDeposito = mongo.exists(queryConDeposito, ProductoDoc.class);
+
+        if (yaExisteDeposito) {
+            // 2A. Si ya existe, incrementamos/decrementamos las unidades de forma atómica con '$'
+            Update update = new Update().inc("depositosStock.$.cantidadUnidades", e.getCantidadDelta());
+            mongo.updateFirst(queryConDeposito, update, ProductoDoc.class);
+
+            System.out.println(" [x] Stock actualizado para producto " + e.getProductoId() + " en depósito " + e.getDepositoId());
+        } else {
+            // 2B. Si no existe, agregamos el nuevo objeto al array con .push()
+            Query queryProducto = new Query(Criteria.where("productoId").is(e.getProductoId()));
+
+            ProductoDoc.DepositoStockDoc nuevoStock = new ProductoDoc.DepositoStockDoc();
+            nuevoStock.setDepositoId(e.getDepositoId());
+            nuevoStock.setNombreDeposito(e.getNombreDeposito());
+            nuevoStock.setCantidadUnidades(e.getCantidadDelta());
+
+            Update update = new Update().push("depositosStock", nuevoStock);
+            mongo.updateFirst(queryProducto, update, ProductoDoc.class);
+
+            System.out.println(" [x] Nuevo depósito " + e.getDepositoId() + " agregado con stock al producto " + e.getProductoId());
+        }
+    }
+
     // -----------------------
     //      NECESIDAD
     // ----------------------
-    @RabbitListener(queues = "consultas.necesidad")
-    public void onNecesidad(NecesidadActualizadaEvent e) {
-        actualizador.aplicarSiEsMasNuevo(NecesidadDoc.class, e.necesidadId(),
-                "ultimaActualizacion", e.fechaEvento(),
-                new Update()
-                        .set("entidadId", e.entidadId())
-                        .set("razonSocial", e.razonSocial())
-                        .set("nivelUrgencia", e.nivelUrgencia())
-                        .set("tipoNecesidad", e.tipoNecesidad())
-                        .set("productoId", e.productoId())
-                        .set("nombreProducto", e.nombreProducto())
-                        .set("categoriaProducto", e.categoriaProducto())
-                        .set("subcategoriaProducto", e.subcategoriaProducto())
-                        .set("cantidadFaltante", e.cantidadFaltante()));
+    @RabbitListener(queues = "consultas.necesidad-creada")
+    public void onNecesidadCreada(NecesidadCreadaEvent e) {
+        Query query = new Query(Criteria.where("id").is(e.getId()));
+
+        Update update = new Update()
+                .set("id", e.getId())
+                .set("entidadId", e.getEntidadId())
+                .set("razonSocial", e.getRazonSocial())
+                .set("nivelUrgencia", e.getNivelUrgencia())
+                .set("descripcion", e.getDescripcion())
+                .set("tipoNecesidad", e.getTipoNecesidad())
+                .set("productoId", e.getProductoId())
+                .set("nombreProducto", e.getNombreProducto())
+                .set("categoriaProducto", e.getCategoriaProducto())
+                .set("subcategoriaProducto", e.getSubcategoriaProducto())
+                .set("cantidadObjetivo", e.getCantidadObjetivo())
+                .setOnInsert("cantidadRecibida", 0) // Inicializa en 0 solo si es documento nuevo
+                .setOnInsert("asignacionesPendientes", new ArrayList<>()) // Inicializa lista vacía
+                .set("ultimaActualizacion", Instant.now());
+
+        // Upsert por si acaso ya existiera
+        mongo.upsert(query, update, NecesidadDoc.class);
+        System.out.println("NecesidadDoc creada/sincronizada en MongoDB para ID: " + e.getId());
     }
 
-    @RabbitListener(queues = "consultas.necesidad-asignacion-pendiente")
-    public void onNecesidadAsignacionPendiente(NecesidadAsignacionPendiente e) {
+    @RabbitListener(queues = "consultas.necesidad-actualizada")
+    public void onNecesidadActualizada(NecesidadActualizadaEvent e) {
+        Query query = new Query(Criteria.where("id").is(e.getId()));
 
-        // Buscamos la necesidad por su ID
-        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
-
-        // Creamos el subdocumento AsignacionPendiente que matchea con tu record
-        NecesidadDoc.AsignacionPendienteDoc nuevaAsignacionPendiente =
-                new NecesidadDoc.AsignacionPendienteDoc(
-                        e.getAsignacionId(),
-                        e.getDepositoId(),
-                        e.getUnidades()
-                );
-
-        // Pusheamos la asignación pendiente a la lista dentro de la necesidad
-        Update update = new Update().push("asignacionesPendientes", nuevaAsignacionPendiente);
+        Update update = new Update()
+                .set("nivelUrgencia", e.getNivelUrgencia())
+                .set("descripcion", e.getDescripcion())
+                .set("ultimaActualizacion", Instant.now());
 
         mongo.updateFirst(query, update, NecesidadDoc.class);
+        System.out.println("NecesidadDoc actualizada en MongoDB para ID: " + e.getId());
+    }
 
-        System.out.println(" Asignación pendiente " + e.getAsignacionId() + " agregada a la necesidad: " + e.getNecesidadId());
+    @RabbitListener(queues = "consultas.necesidad-eliminada")
+    public void onNecesidadEliminada(NecesidadEliminadaEvent e) {
+        Query query = new Query(Criteria.where("id").is(e.getId()));
+        mongo.remove(query, NecesidadDoc.class);
+        System.out.println("NecesidadDoc eliminada de MongoDB para ID: " + e.getId());
     }
 
     @RabbitListener(queues = "consultas.asignacion-completada")
@@ -437,6 +528,23 @@ public class ConsultasListener {
         mongo.updateFirst(query, update, NecesidadDoc.class);
 
         System.out.println("signación pendiente " + e.getAsignacionId() + " eliminada de la necesidad: " + e.getNecesidadId());
+    }
+
+
+    @RabbitListener(queues = "consultas.necesidad-satisfecha")
+    public void onNecesidadSatisfecha(CantidadRecibidaActualizadaEvent e) {
+
+        // 1. Buscamos la necesidad por su ID de String (coincidente con el record NecesidadDoc)
+        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
+
+        // 2. Incrementamos la cantidad recibida e actualizamos la fecha de última modificación
+        Update update = new Update()
+                .inc("cantidadRecibida", e.getCantidad())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, NecesidadDoc.class);
+
+        System.out.println("Cantidad recibida incrementada en " + e.getCantidad() + " para la necesidad: " + e.getNecesidadId());
     }
 
 
@@ -460,15 +568,185 @@ public class ConsultasListener {
     // ---------------
     //    DEPOSITO
     // ---------------
-    @RabbitListener(queues = "consultas.deposito")
-    public void onDeposito(DepositoActualizadoEvent e) {
-        actualizador.aplicarSiEsMasNuevo(DepositoDoc.class, e.depositoId(),
-                "ultimaActualizacion", e.fechaEvento(),
-                new Update()
-                        .set("nombre", e.nombre())
-                        .set("capacidad", e.capacidad())
-                        .set("algoritmoMatchmaking", e.algoritmoMatchmaking()));
+    @RabbitListener(queues = "consultas.deposito-creado")
+    public void onDepositoCreado(DepositoCreadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        Update update = new Update()
+                .set("depositoId", e.getDepositoId())
+                .set("nombre", e.getNombre())
+                .set("direccion", e.getDireccion())
+                .set("algoritmoMatchmaking", e.getAlgoritmoMatchmaking())
+                .set("capacidadMaxima", e.getCapacidadMaxima())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.upsert(query, update, DepositoDoc.class);
+        System.out.println("DepositoDoc creado/sincronizado en MongoDB para ID: " + e.getDepositoId());
     }
+
+    @RabbitListener(queues = "consultas.deposito-eliminado")
+    public void onDepositoEliminado(DepositoEliminadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        mongo.remove(query, DepositoDoc.class);
+        System.out.println("DepositoDoc eliminado de MongoDB para ID: " + e.getDepositoId());
+    }
+
+    @RabbitListener(queues = "consultas.deposito-algoritmo-actualizado")
+    public void onAlgoritmoActualizado(DepositoAlgoritmoActualizadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        Update update = new Update()
+                .set("algoritmoMatchmaking", e.getAlgoritmoMatchmaking())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+        System.out.println("DepositoDoc actualizado (algoritmo) en MongoDB para ID: " + e.getDepositoId());
+    }
+
+    @RabbitListener(queues = "consultas.deposito-paquete-agregado")
+    public void onPaqueteAgregado(DepositoPaqueteAgregadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        DepositoDoc.PaqueteStockDoc nuevoPaquete = new DepositoDoc.PaqueteStockDoc(
+                e.getPaqueteId(),
+                e.getDonacionID(),
+                e.getProductoID(),
+                e.getCantidad()
+        );
+
+        Update update = new Update()
+                .push("stockActual", nuevoPaquete)
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+        System.out.println("Paquete agregado al DepositoDoc en MongoDB para depósito ID: " + e.getDepositoId());
+    }
+
+    @RabbitListener(queues = "consultas.deposito-paquete-actualizado")
+    public void onPaqueteStockActualizado(DepositoPaqueteStockActualizadoEvent e) {
+        Query queryDeposito = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        // 1. Descontamos la cantidad del paquetesDeposito general del depósito
+        Update updatePaquetesDeposito = new Update()
+                .inc("paquetesDeposito", -e.getCantidadDescontada())
+                .set("ultimaActualizacion", Instant.now());
+        mongo.updateFirst(queryDeposito, updatePaquetesDeposito, DepositoDoc.class);
+
+        // 2. Evaluamos si el paquete se quedó sin stock o todavía tiene unidades
+        if (e.getNuevaCantidad() <= 0) {
+            // Si se agotó, lo removemos del array stockActual
+            Query queryPaquete = new Query(
+                    Criteria.where("depositoId").is(e.getDepositoId())
+                            .and("stockActual.paqueteId").is(e.getPaqueteId())
+            );
+            Update updatePull = new Update().pull("stockActual", org.bson.Document.parse("{\"paqueteId\": \"" + e.getPaqueteId() + "\"}"));
+            mongo.updateFirst(queryPaquete, updatePull, DepositoDoc.class);
+
+            System.out.println("Paquete agotado y removido del DepositoDoc ID: " + e.getDepositoId());
+        } else {
+            // Si todavía tiene stock, actualizamos la cantidad en el subdocumento usando el operador posicional '$'
+            Query queryPaquete = new Query(
+                    Criteria.where("depositoId").is(e.getDepositoId())
+                            .and("stockActual.paqueteId").is(e.getPaqueteId())
+            );
+            Update updateSet = new Update().set("stockActual.$.cantidad", e.getNuevaCantidad());
+            mongo.updateFirst(queryPaquete, updateSet, DepositoDoc.class);
+
+            System.out.println("Cantidad de paquete actualizada en DepositoDoc ID: " + e.getDepositoId());
+        }
+    }
+
+    @RabbitListener(queues = "consultas.deposito-entidad-atendida")
+    public void onEntidadAtendida(DepositoEntidadAtendidaEvent e) {
+        Query queryDeposito = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        // 1. Verificamos si la entidad ya existe dentro de la lista 'entidadesAtendidas' del depósito
+        Query queryEntidadExistente = new Query(
+                Criteria.where("depositoId").is(e.getDepositoId())
+                        .and("entidadesAtendidas.entidadId").is(e.getEntidadId())
+        );
+
+        boolean yaFueAtendida = mongo.exists(queryEntidadExistente, DepositoDoc.class);
+
+        if (yaFueAtendida) {
+            // 2A. Si ya fue atendida, sumamos las unidades entregadas con el operador posicional '$'
+            Update updateInc = new Update()
+                    .inc("entidadesAtendidas.$.unidadesEntregadas", e.getUnidadesEntregadas())
+                    .set("ultimaActualizacion", Instant.now());
+
+            mongo.updateFirst(queryEntidadExistente, updateInc, DepositoDoc.class);
+            System.out.println("Unidades sumadas a entidad existente en DepositoDoc ID: " + e.getDepositoId());
+        } else {
+            // 2B. Si es una entidad nueva para este depósito, la pusheamos al array Y aumentamos el contador total en 1
+            DepositoDoc.EntidadesAtendidasDoc nuevaEntidad = new DepositoDoc.EntidadesAtendidasDoc(
+                    e.getEntidadId(),
+                    e.getRazonSocial(),
+                    e.getUnidadesEntregadas()
+            );
+
+            Update updatePush = new Update()
+                    .push("entidadesAtendidas", nuevaEntidad)
+                    .inc("cantidadDeEntidadesDistintasAtendidas", 1)
+                    .set("ultimaActualizacion", Instant.now());
+
+            mongo.updateFirst(queryDeposito, updatePush, DepositoDoc.class);
+            System.out.println("Nueva entidad agregada y contador incrementado en DepositoDoc ID: " + e.getDepositoId());
+        }
+    }
+
+
+    @RabbitListener(queues = "consultas.deposito-cantidad-asignacion-estado")
+    public void onAsignacionEstadoReportada(DepositoCantidadAsignacionEstadoEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        // Incrementa en 1 la clave correspondiente dentro del Map en MongoDB de forma atómica
+        Update update = new Update()
+                .inc("cantidadAsignacionesPorEstado." + e.getEstado(), 1L)
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+
+        System.out.println("Contador de estado [" + e.getEstado() + "] incrementado para depósito ID: " + e.getDepositoId());
+    }
+
+
+    @RabbitListener(queues = "consultas.deposito-donacion-ingresada")
+    public void onDonacionIngresada(DepositoDonacionIngresadaEvent e) {
+        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+
+        DepositoDoc.DonacionDepositoDoc nuevaDonacion = new DepositoDoc.DonacionDepositoDoc(
+                e.getDonacionId(),
+                e.getDonadorId(),
+                e.getCantidadDonada(),
+                e.getFechaQueLlego(),
+                null // Aún no se entregó
+        );
+
+        Update update = new Update()
+                .push("donacionesDeposito", nuevaDonacion)
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+        System.out.println("Donación agregada al historial del DepositoDoc ID: " + e.getDepositoId());
+    }
+
+    @RabbitListener(queues = "consultas.deposito-donacion-entregada")
+    public void onDonacionEntregada(DepositoDonacionEntregadaEvent e) {
+        // Buscamos el depósito y el elemento dentro del array donacionesDeposito que coincida con la donacionId
+        Query query = new Query(
+                Criteria.where("depositoId").is(e.getDepositoId())
+                        .and("donacionesDeposito.donacionId").is(e.getDonacionId())
+        );
+
+        // Actualizamos la fecha de entrega usando el operador posicional '$'
+        Update update = new Update()
+                .set("donacionesDeposito.$.fechaQueSeEntrego", e.getFechaQueSeEntrego())
+                .set("ultimaActualizacion", Instant.now());
+
+        mongo.updateFirst(query, update, DepositoDoc.class);
+        System.out.println("Fecha de entrega registrada para la donación en DepositoDoc ID: " + e.getDepositoId());
+    }
+
 
 
     // ------------

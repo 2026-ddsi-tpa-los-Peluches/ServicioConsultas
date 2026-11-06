@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "productos")
 @Data
@@ -33,4 +35,18 @@ public class ProductoDoc {
     private String identificadorTipo;
 
     private Instant ultimaActualizacion;
+
+    // Lista de stock por deposito
+    private List<DepositoStockDoc> depositosStock = new ArrayList<>();
+
+
+
+    @Data
+    public static class DepositoStockDoc {
+        private String depositoId;
+        private String nombreDeposito; // Opcional, si querés mostrarlo lindo
+        private Integer cantidadUnidades;
+}
+
+
 }
