@@ -1,5 +1,6 @@
 package ar.edu.utn.dds.k3003.service;
 
+import ar.edu.utn.dds.k3003.documentos.EntidadDoc;
 import ar.edu.utn.dds.k3003.documentos.NecesidadDoc;
 import ar.edu.utn.dds.k3003.dtos.donadoresYEntidades.*;
 import ar.edu.utn.dds.k3003.dtos.donadoresYEntidades.EstadoDonadorEnum;
@@ -68,6 +69,27 @@ public class DonadoresYEntidadesDataMapper {
                 doc.cantidadRecibida(),
                 doc.productoId(),
                 doc.tipoNecesidad() != null ? TipoNecesidadMaterialEnum.valueOf(doc.tipoNecesidad()) : null
+        );
+    }
+
+
+    public EntidadBeneficaDTO toEntidadBeneficaDTO(EntidadDoc doc) {
+        if (doc == null) return null;
+
+        Integer idInt = null;
+        try {
+            if (doc.getEntidadId() != null) {
+                idInt = Integer.valueOf(doc.getEntidadId());
+            }
+        } catch (NumberFormatException ignored) {
+        }
+
+        return new EntidadBeneficaDTO(
+                idInt,
+                doc.getRazonSocial(),
+                doc.getDomicilio(),
+                doc.getTelefono(),
+                doc.getEmail() // Mapea el email del doc al correo del DTO
         );
     }
 }
