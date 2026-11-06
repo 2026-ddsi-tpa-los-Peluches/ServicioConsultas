@@ -46,7 +46,7 @@ public class RabbitConfig {
 
                 // NECESIDAD
                 "necesidad-cantidad-recibida", "necesidad-asignacion-pendiente", "necesidad-asignacion-hecha",
-                "necesidad-creada", "necesidad-actualizada", "necesidad-eliminada",
+                "necesidad-creada", "necesidad-actualizada", "necesidad-eliminada","necesidad-satisfecha",
 
 
                 // STOCK
