@@ -28,6 +28,7 @@ public record DonacionDoc(
 
         // queja de una donacion
         QuejaDonacionDoc queja,
+        String depositoId,
 
 
         Instant ultimaActualizacion

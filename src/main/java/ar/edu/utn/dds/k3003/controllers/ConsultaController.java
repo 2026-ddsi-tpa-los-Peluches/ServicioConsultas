@@ -1,7 +1,11 @@
 package ar.edu.utn.dds.k3003.controllers;
 
+import ar.edu.utn.dds.k3003.documentos.DonadorDoc;
 import ar.edu.utn.dds.k3003.service.ConsultaService;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -18,4 +22,5 @@ public class ConsultaController {
 
     @GetMapping("/calidad")
     public List<Document> calidad() { return service.calidadPorCategoria(); }
+
 }

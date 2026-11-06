@@ -1,6 +1,5 @@
 package ar.edu.utn.dds.k3003.analiticas;
 
-import ar.edu.utn.dds.k3003.dtos.ReporteCalidadYDonadoresDTO;
 import org.bson.Document;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Service;

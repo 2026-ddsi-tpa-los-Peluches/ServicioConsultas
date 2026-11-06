@@ -2,18 +2,23 @@ package ar.edu.utn.dds.k3003.controllers;
 
 import ar.edu.utn.dds.k3003.analiticas.DonadorAnalyticsService;
 import ar.edu.utn.dds.k3003.documentos.DonadorDoc;
+import ar.edu.utn.dds.k3003.service.ServiceDonador;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/analitica/donadores")
 public class DonadorAnaliticaController {
 
     private final DonadorAnalyticsService analyticsService;
+    private final ServiceDonador serviceDonador;
 
-    public DonadorAnaliticaController(DonadorAnalyticsService analyticsService) {
+    public DonadorAnaliticaController(DonadorAnalyticsService analyticsService, ServiceDonador serviceDonador) {
         this.analyticsService = analyticsService;
+        this.serviceDonador = serviceDonador;
     }
 
     @GetMapping("/{donadorId}")
@@ -33,4 +38,10 @@ public class DonadorAnaliticaController {
                     .body("Error al procesar la consulta analítica del donador: " + e.getMessage());
         }
     }
+
+
+
+
+
+
 }

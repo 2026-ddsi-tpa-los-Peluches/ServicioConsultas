@@ -12,5 +12,6 @@ public record DonacionCreadaEvent(
         int cantidad,
         String estado,
         Instant fechaIngreso,
-        Instant ultimaActualizacion
+        Instant ultimaActualizacion,
+        String depositoId
 ) {}

@@ -1,10 +1,9 @@
 package ar.edu.utn.dds.k3003.listeners;
 
-import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.documentos.*;
+import ar.edu.utn.dds.k3003.dtos.*;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.depositoEvents.*;
-import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionCreadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionEstadoActualizadoEvent;
@@ -30,7 +29,6 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.List;
 
 @Component
 public class ConsultasListener {
@@ -337,7 +335,8 @@ public class ConsultasListener {
                 .set("estado", e.estado())
                 .set("fechaIngreso", e.fechaIngreso())
                 .set("queja", null) // <-- Arranca en null tal como pediste
-                .set("ultimaActualizacion", e.ultimaActualizacion());
+                .set("ultimaActualizacion", e.ultimaActualizacion())
+                .set("depositoId", e.depositoId());
 
         // Usamos upsert para asegurar que si el evento llega duplicado no rompa, sino que actualice/inserte de forma idempotente
         mongo.upsert(query, update, DonacionDoc.class);
