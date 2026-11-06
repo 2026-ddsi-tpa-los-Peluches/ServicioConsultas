@@ -19,6 +19,8 @@ import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorEliminadoEve
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.*;
+import ar.edu.utn.dds.k3003.events.paqueteEvents.PaqueteCreadoEvent;
+import ar.edu.utn.dds.k3003.events.paqueteEvents.PaqueteRestarCantidadEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoCreadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoEliminadoEvent;
@@ -882,6 +884,42 @@ public class ConsultasListener {
         mongo.remove(query, IdentificadorDoc.class);
 
         System.out.println("IdentificadorDoc eliminado de MongoDB para el ID: " + e.id());
+    }
+
+
+    // ------------------
+    //     PAQUETE
+    // -----------------
+
+    @RabbitListener(queues = "consultas.paquete-creado")
+    public void onPaqueteCreado(PaqueteCreadoEvent e) {
+        String paqueteIdStr = String.valueOf(e.id());
+
+        Query query = new Query(Criteria.where("paqueteId").is(paqueteIdStr));
+
+        Update update = new Update()
+                .set("paqueteId", paqueteIdStr)
+                .set("donacionID", e.donacionID())
+                .set("productoID", e.productoID())
+                .set("cantidad", e.cantidad())
+                .set("depositoID", e.depositoID())
+                .set("actualizadoEn", e.fechaEvento());
+
+        mongo.upsert(query, update, PaqueteDoc.class);
+        System.out.println("PaqueteDoc sincronizado en MongoDB para el ID: " + paqueteIdStr);
+    }
+
+    @RabbitListener(queues = "consultas.paquete-restar-cantidad")
+    public void onPaqueteRestarCantidad(PaqueteRestarCantidadEvent e) {
+        Query query = new Query(Criteria.where("paqueteId").is(String.valueOf(e.id())));
+
+        // Decrementamos la cantidad existente en el documento de Mongo de forma atómica usando $inc
+        Update update = new Update()
+                .inc("cantidad", -e.cantidadARestar())
+                .set("actualizadoEn", e.fechaEvento());
+
+        mongo.updateFirst(query, update, PaqueteDoc.class);
+        System.out.println("Stock reducido para el PaqueteDoc ID: " + e.id() + " en " + e.cantidadARestar() + " unidades.");
     }
 
 
