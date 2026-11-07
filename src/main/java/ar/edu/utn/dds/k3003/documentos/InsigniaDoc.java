@@ -5,15 +5,13 @@ import lombok.Setter;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-
 @Getter
 @Setter
 @Document(collection = "insignias")
 public class InsigniaDoc {
 
     @Id
-    private String id; // ID interno de Mongo (ObjectId)
-    private Integer insigniaId; // ID original de PostgreSQL
+    private Integer insigniaId; // Cambiado a Integer para coincidir con los eventos
     private String nombre;
     private String descripcion;
 

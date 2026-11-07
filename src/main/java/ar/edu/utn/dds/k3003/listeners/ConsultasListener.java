@@ -16,6 +16,8 @@ import ar.edu.utn.dds.k3003.events.entidadEvents.EntidadBeneficaActualizadaEvent
 import ar.edu.utn.dds.k3003.events.entidadEvents.EntidadBeneficaCreadaEvent;
 import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorCreadoEvent;
 import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorEliminadoEvent;
+import ar.edu.utn.dds.k3003.events.insigniaEvents.InsigniaAgregadaEvent;
+import ar.edu.utn.dds.k3003.events.insigniaEvents.InsigniaEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.*;
@@ -266,24 +268,24 @@ public class ConsultasListener {
 
 
     @RabbitListener(queues = "consultas.insignia-agregada")
-    public void onInsigniaAgregada(InsigniaDonadorAgregadaEvent e) {
-        Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
+    public void onInsigniaAgregada(InsigniaAgregadaEvent e) {
+        Query query = new Query(Criteria.where("insigniaId").is(e.getInsigniaId()));
 
         // .push() añade el elemento al array 'insignias'
         Update update = new Update().push("insignias", e.getInsigniaId());
 
-        mongo.updateFirst(query, update, DonadorDoc.class);
+        mongo.updateFirst(query, update, InsigniaDoc.class);
     }
 
-    // 2. Remueve la insignia del array usando $pull de MongoDB
-    @RabbitListener(queues = "consultas.insignia-quitada")
-    public void onInsigniaQuitada(InsigniaDonadorQuitadaEvent e) {
-        Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
+    //
+    @RabbitListener(queues = "consultas.insignia-eliminada")
+    public void onInsigniaQuitada(InsigniaEliminadaEvent e) {
+        Query query = new Query(Criteria.where("insigniaId").is(e.getInsigniaId()));
 
         // .pull() busca la coincidencia exacta en el array 'insignias' y la elimina
         Update update = new Update().pull("insignias", e.getInsigniaId());
 
-        mongo.updateFirst(query, update, DonadorDoc.class);
+        mongo.updateFirst(query, update, InsigniaDoc.class);
     }
 
 
@@ -291,27 +293,24 @@ public class ConsultasListener {
     //-------------------------------
     //      MISIONES
     //-------------------------------
-    @RabbitListener(queues = "consultas.mision-agregada")
-    public void onMisionSincronizada(MisionAgregadaEvent e) {
-        Query query = new Query(Criteria.where("misionId").is(e.getMisionId()));
+    @RabbitListener(queues = "consultas.insignia-agregada")
+    public void onInsigniaSincronizada(InsigniaAgregadaEvent e) {
+        Query query = new Query(Criteria.where("insigniaId").is(e.getInsigniaId()));
 
         Update update = new Update()
                 .set("nombre", e.getNombre())
-                .set("insigniaId", e.getInsigniaId())
-                .set("categoriaInicio", e.getCategoriaInicio())
-                .set("categoriaFin", e.getCategoriaFin())
-                .set("tipoMision", e.getTipoMision());
+                .set("descripcion", e.getDescripcion());
 
         // Upsert actualiza si existe, o inserta si es nueva
-        mongo.upsert(query, update, MisionDoc.class);
+        mongo.upsert(query, update, InsigniaDoc.class);
     }
 
-    @RabbitListener(queues = "consultas.mision-eliminada")
-    public void onMisionEliminada(MisionEliminadaEvent e) {
-        Query query = new Query(Criteria.where("misionId").is(e.getMisionId()));
+    @RabbitListener(queues = "consultas.insignia-eliminada")
+    public void onInsigniaEliminada(InsigniaEliminadaEvent e) {
+        Query query = new Query(Criteria.where("insigniaId").is(e.getInsigniaId()));
 
         // Elimina el documento del catálogo de MongoDB
-        mongo.remove(query, MisionDoc.class);
+        mongo.remove(query, InsigniaDoc.class);
     }
 
 

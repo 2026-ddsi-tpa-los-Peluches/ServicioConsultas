@@ -42,9 +42,6 @@ public class RabbitConfig {
                 // DONACION
                 "donacion-creada", "donacion-queja", "donacion-estado-actualizado",
 
-                // PRODUCTO
-                "producto-creado", "producto-actualizado", "producto-eliminado",
-
                 // NECESIDAD
                 "necesidad-cantidad-recibida", "necesidad-asignacion-pendiente", "necesidad-asignacion-hecha",
                 "necesidad-creada", "necesidad-actualizada", "necesidad-eliminada","necesidad-satisfecha",
