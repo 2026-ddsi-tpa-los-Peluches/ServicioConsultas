@@ -1,7 +1,7 @@
 package ar.edu.utn.dds.k3003.controllers.Incentivos;
 
-import ar.edu.utn.dds.k3003.documentos.DonadorDoc;
-import ar.edu.utn.dds.k3003.repositories.DonadoresYEntidades.DonadorMongoRepository;
+import ar.edu.utn.dds.k3003.dtos.incentivos.*;
+import ar.edu.utn.dds.k3003.service.ServiceMision;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -11,22 +11,19 @@ import java.util.NoSuchElementException;
 @RequestMapping("/misionesDonador/{donadorID}")
 public class MisionDonadorIDController {
 
-    private final DonadorMongoRepository donadorDocRepository;
+    private final ServiceMision serviceMision;
 
-    public MisionDonadorIDController(DonadorMongoRepository donadorDocRepository) {
-        this.donadorDocRepository = donadorDocRepository;
+    public MisionDonadorIDController(ServiceMision serviceMision) {
+        this.serviceMision = serviceMision;
     }
 
     @GetMapping
-    public ResponseEntity<?> getMisionEnCurso(@PathVariable String donadorID) {
+    public ResponseEntity<MisionDTO> getMisionEnCurso(@PathVariable String donadorID) {
         try {
-            DonadorDoc donador = donadorDocRepository.findByDonadorId(donadorID).orElse(null);
-            if (donador == null || donador.getMisionActual() == null) {
-                return ResponseEntity.status(404).build();
-            }
-            return ResponseEntity.ok(donador.getMisionActual());
+            MisionDTO mision = serviceMision.obtenerEnCursoPorDonador(donadorID);
+            return ResponseEntity.ok(mision);
         } catch (NoSuchElementException e) {
-            return ResponseEntity.status(404).build();
+            return ResponseEntity.notFound().build();
         }
     }
 }
