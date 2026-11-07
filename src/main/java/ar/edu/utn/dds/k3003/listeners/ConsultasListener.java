@@ -181,7 +181,7 @@ public class ConsultasListener {
         mongo.updateFirst(query, update, DonadorDoc.class);
     }
 
-    @RabbitListener(queues = "consultas.mision-donador-limpliada")
+    @RabbitListener(queues = "consultas.mision-donador-limpiada")
     public void onMisionLimpiada(MisionDonadorLimpiadaEvent e) {
         // 1. Buscamos al donador por su ID
         Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
@@ -278,12 +278,9 @@ public class ConsultasListener {
     public void onInsigniaDonadorQuitada(DonadorInsigniaQuitadaEvent e) {
         Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
 
-        // Creamos un objeto parcial o usamos un documento con el ID para que $pull identifique cuál remover del array basándose en el campo 'id'
-        DonadorDoc.InsigniaDonadorDoc insigniaDoc = new DonadorDoc.InsigniaDonadorDoc();
-        insigniaDoc.setId(e.getInsigniaId());
-
-        // .pull() busca dentro del array 'insignias' el elemento que coincida y lo elimina
-        Update update = new Update().pull("insignias", insigniaDoc);
+        // $pull con una condición sobre el subdocumento: saca el/los elementos cuyo _id coincide,
+        // sin importar nombre/descripcion (un POJO parcial no matchea el subdocumento completo).
+        Update update = new Update().pull("insignias", new org.bson.Document("_id", e.getInsigniaId()));
 
         mongo.updateFirst(query, update, DonadorDoc.class);
     }
@@ -295,23 +292,23 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.insignia-agregada")
     public void onInsigniaAgregada(InsigniaAgregadaEvent e) {
+        // El @Id de InsigniaDoc es insigniaId (_id en Mongo).
         Query query = new Query(Criteria.where("insigniaId").is(e.getInsigniaId()));
 
-        // .push() añade el elemento al array 'insignias'
-        Update update = new Update().push("insignias", e.getInsigniaId());
+        Update update = new Update()
+                .set("nombre", e.getNombre())
+                .set("descripcion", e.getDescripcion());
 
-        mongo.updateFirst(query, update, InsigniaDoc.class);
+        // Upsert: crea el documento del catálogo si no existe, o lo actualiza.
+        mongo.upsert(query, update, InsigniaDoc.class);
     }
 
-    //
     @RabbitListener(queues = "consultas.insignia-eliminada")
-    public void onInsigniaQuitada(InsigniaEliminadaEvent e) {
+    public void onInsigniaEliminada(InsigniaEliminadaEvent e) {
         Query query = new Query(Criteria.where("insigniaId").is(e.getInsigniaId()));
 
-        // .pull() busca la coincidencia exacta en el array 'insignias' y la elimina
-        Update update = new Update().pull("insignias", e.getInsigniaId());
-
-        mongo.updateFirst(query, update, InsigniaDoc.class);
+        // Elimina la insignia del catálogo.
+        mongo.remove(query, InsigniaDoc.class);
     }
 
 
@@ -684,8 +681,11 @@ public class ConsultasListener {
                 e.getCantidad()
         );
 
+        // El campo se llama paquetesDeposito en DepositoDoc (antes se pusheaba a "stockActual", que
+        // el documento no mapea). stockTotal acumula las unidades que hay en el depósito.
         Update update = new Update()
-                .push("stockActual", nuevoPaquete)
+                .push("paquetesDeposito", nuevoPaquete)
+                .inc("stockTotal", e.getCantidad())
                 .set("ultimaActualizacion", Instant.now());
 
         mongo.updateFirst(query, update, DepositoDoc.class);
@@ -696,20 +696,21 @@ public class ConsultasListener {
     public void onPaqueteStockActualizado(DepositoPaqueteStockActualizadoEvent e) {
         Query queryDeposito = new Query(Criteria.where("_id").is(e.getDepositoId()));
 
-        // 1. Descontamos la cantidad del paquetesDeposito general del depósito
+        // 1. Descontamos la cantidad del stockTotal del depósito (antes se hacía $inc sobre
+        // paquetesDeposito, que es una lista: dejaba un número y rompía la lectura del documento)
         Update updatePaquetesDeposito = new Update()
-                .inc("paquetesDeposito", -e.getCantidadDescontada())
+                .inc("stockTotal", -e.getCantidadDescontada())
                 .set("ultimaActualizacion", Instant.now());
         mongo.updateFirst(queryDeposito, updatePaquetesDeposito, DepositoDoc.class);
 
         // 2. Evaluamos si el paquete se quedó sin stock o todavía tiene unidades
         if (e.getNuevaCantidad() <= 0) {
-            // Si se agotó, lo removemos del array stockActual
+            // Si se agotó, lo removemos del array paquetesDeposito
             Query queryPaquete = new Query(
                     Criteria.where("_id").is(e.getDepositoId())
-                            .and("stockActual.paqueteId").is(e.getPaqueteId())
+                            .and("paquetesDeposito.paqueteId").is(e.getPaqueteId())
             );
-            Update updatePull = new Update().pull("stockActual", org.bson.Document.parse("{\"paqueteId\": \"" + e.getPaqueteId() + "\"}"));
+            Update updatePull = new Update().pull("paquetesDeposito", new org.bson.Document("paqueteId", e.getPaqueteId()));
             mongo.updateFirst(queryPaquete, updatePull, DepositoDoc.class);
 
             System.out.println("Paquete agotado y removido del DepositoDoc ID: " + e.getDepositoId());
@@ -717,9 +718,9 @@ public class ConsultasListener {
             // Si todavía tiene stock, actualizamos la cantidad en el subdocumento usando el operador posicional '$'
             Query queryPaquete = new Query(
                     Criteria.where("_id").is(e.getDepositoId())
-                            .and("stockActual.paqueteId").is(e.getPaqueteId())
+                            .and("paquetesDeposito.paqueteId").is(e.getPaqueteId())
             );
-            Update updateSet = new Update().set("stockActual.$.cantidad", e.getNuevaCantidad());
+            Update updateSet = new Update().set("paquetesDeposito.$.cantidad", e.getNuevaCantidad());
             mongo.updateFirst(queryPaquete, updateSet, DepositoDoc.class);
 
             System.out.println("Cantidad de paquete actualizada en DepositoDoc ID: " + e.getDepositoId());

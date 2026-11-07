@@ -22,10 +22,7 @@ public class InsigniasController {
     @GetMapping
     public ResponseEntity<?> getAllInsignias() {
         List<InsigniaDTO> insignias = serviceInsignia.obtenerTodas();
-        if (insignias == null || insignias.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(insignias);
+        return ResponseEntity.ok(insignias == null ? List.of() : insignias);
     }
 
     @GetMapping("/{id}")

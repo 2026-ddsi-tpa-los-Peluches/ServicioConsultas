@@ -21,10 +21,7 @@ public class MisionesController {
     @GetMapping
     public ResponseEntity<?> getMisiones() {
         List<MisionDTO> misiones = serviceMision.obtenerTodas();
-        if (misiones == null || misiones.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
-        return ResponseEntity.ok(misiones);
+        return ResponseEntity.ok(misiones == null ? List.of() : misiones);
     }
 
     @GetMapping("/{id}")
