@@ -1,59 +1,49 @@
-//package ar.edu.utn.dds.k3003.controllers.Logistica;
-//
-//import ar.edu.utn.dds.k3003.Fachada;
-//import ar.edu.utn.dds.k3003.catedra.dtos.logistica.PaqueteDTO;
-//import org.springframework.http.HttpStatus;
-//import org.springframework.http.ResponseEntity;
-//import org.springframework.web.bind.annotation.GetMapping;
-//import org.springframework.web.bind.annotation.PathVariable;
-//import org.springframework.web.bind.annotation.RequestMapping;
-//import org.springframework.web.bind.annotation.RestController;
-//
-//import java.util.List;
-//import java.util.NoSuchElementException;
-//
-//@RestController
-//@RequestMapping("/paquetes")
-//public class PaqueteController {
-//
-//    private final Fachada fachada;
-//
-//    public PaqueteController(Fachada fachada) {
-//        this.fachada = fachada;
-//    }
-//
-//
-//
-//    // GET /paquete -> Devuelve todos los paquetes almacenados
-//    @GetMapping
-//    public ResponseEntity<List<PaqueteDTO>> buscarTodos() {
-//        try {
-//            List<PaqueteDTO> paquetes = fachada.obtenerPaquetes();
-//            return ResponseEntity.ok(paquetes);
-//        } catch (Exception e) {
-//            return ResponseEntity
-//                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .build();
-//        }
-//    }
-//
-//    // GET /paquete/{id}
-//    @GetMapping("/{id}")
-//    public ResponseEntity<?> buscarPaquetePorId(@PathVariable Integer id) {
-//        try {
-//            PaqueteDTO paqueteDTO = fachada.buscarPaquetePorID(id);
-//            return ResponseEntity.ok(paqueteDTO);
-//
-//        } catch (NoSuchElementException e) {
-//            return ResponseEntity
-//                    .status(HttpStatus.NOT_FOUND)
-//                    .body(e.getMessage());
-//
-//        } catch (Exception e) {
-//            return ResponseEntity
-//                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
-//                    .body(e.getMessage());
-//        }
-//    }
-//
-//}
+package ar.edu.utn.dds.k3003.controllers.Logistica;
+
+import ar.edu.utn.dds.k3003.dtos.logistica.PaqueteDTO;
+import ar.edu.utn.dds.k3003.service.ServicePaquete;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.NoSuchElementException;
+
+@RestController
+@RequestMapping("/paquetes")
+public class PaqueteController {
+
+    private final ServicePaquete servicePaquete;
+
+    public PaqueteController(ServicePaquete servicePaquete) {
+        this.servicePaquete = servicePaquete;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<PaqueteDTO>> buscarTodos() {
+        try {
+            List<PaqueteDTO> paquetes = servicePaquete.obtenerTodos();
+            return ResponseEntity.ok(paquetes);
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .build();
+        }
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<?> buscarPaquetePorId(@PathVariable String id) {
+        try {
+            PaqueteDTO paqueteDTO = servicePaquete.buscarPorId(id);
+            return ResponseEntity.ok(paqueteDTO);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity
+                    .status(HttpStatus.NOT_FOUND)
+                    .body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(e.getMessage());
+        }
+    }
+}
