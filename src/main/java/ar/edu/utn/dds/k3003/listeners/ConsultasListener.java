@@ -592,11 +592,12 @@ public class ConsultasListener {
     // ---------------
     @RabbitListener(queues = "consultas.deposito-creado")
     public void onDepositoCreado(DepositoCreadoEvent e) {
-        // CORRECCIÓN: Buscamos por "id" para que coincida con el @Id de DepositoDoc
-        Query query = new Query(Criteria.where("id").is(e.getDepositoId()));
+        Query query = new Query(Criteria.where("_id").is(e.getDepositoId()));
 
+        // El _id del documento es el mismo depositoId que asigna Logistica (Postgres), no uno generado por Mongo:
+        // asi "GET /depositos/{id}" encuentra el deposito con el mismo id que devolvio el POST que lo creo.
         Update update = new Update()
-                .set("id", e.getDepositoId())
+                .setOnInsert("_id", e.getDepositoId())
                 .set("nombre", e.getNombre())
                 .set("direccion", e.getDireccion())
                 .set("algoritmoMatchmaking", e.getAlgoritmoMatchmaking())
@@ -610,14 +611,14 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.deposito-eliminado")
     public void onDepositoEliminado(DepositoEliminadoEvent e) {
-        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        Query query = new Query(Criteria.where("_id").is(e.getDepositoId()));
         mongo.remove(query, DepositoDoc.class);
         System.out.println("DepositoDoc eliminado de MongoDB para ID: " + e.getDepositoId());
     }
 
     @RabbitListener(queues = "consultas.deposito-algoritmo-actualizado")
     public void onAlgoritmoActualizado(DepositoAlgoritmoActualizadoEvent e) {
-        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        Query query = new Query(Criteria.where("_id").is(e.getDepositoId()));
 
         Update update = new Update()
                 .set("algoritmoMatchmaking", e.getAlgoritmoMatchmaking())
@@ -629,7 +630,7 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.deposito-paquete-agregado")
     public void onPaqueteAgregado(DepositoPaqueteAgregadoEvent e) {
-        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        Query query = new Query(Criteria.where("_id").is(e.getDepositoId()));
 
         DepositoDoc.PaqueteStockDoc nuevoPaquete = new DepositoDoc.PaqueteStockDoc(
                 e.getPaqueteId(),
@@ -648,7 +649,7 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.deposito-paquete-actualizado")
     public void onPaqueteStockActualizado(DepositoPaqueteStockActualizadoEvent e) {
-        Query queryDeposito = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        Query queryDeposito = new Query(Criteria.where("_id").is(e.getDepositoId()));
 
         // 1. Descontamos la cantidad del paquetesDeposito general del depósito
         Update updatePaquetesDeposito = new Update()
@@ -660,7 +661,7 @@ public class ConsultasListener {
         if (e.getNuevaCantidad() <= 0) {
             // Si se agotó, lo removemos del array stockActual
             Query queryPaquete = new Query(
-                    Criteria.where("depositoId").is(e.getDepositoId())
+                    Criteria.where("_id").is(e.getDepositoId())
                             .and("stockActual.paqueteId").is(e.getPaqueteId())
             );
             Update updatePull = new Update().pull("stockActual", org.bson.Document.parse("{\"paqueteId\": \"" + e.getPaqueteId() + "\"}"));
@@ -670,7 +671,7 @@ public class ConsultasListener {
         } else {
             // Si todavía tiene stock, actualizamos la cantidad en el subdocumento usando el operador posicional '$'
             Query queryPaquete = new Query(
-                    Criteria.where("depositoId").is(e.getDepositoId())
+                    Criteria.where("_id").is(e.getDepositoId())
                             .and("stockActual.paqueteId").is(e.getPaqueteId())
             );
             Update updateSet = new Update().set("stockActual.$.cantidad", e.getNuevaCantidad());
@@ -682,11 +683,11 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.deposito-entidad-atendida")
     public void onEntidadAtendida(DepositoEntidadAtendidaEvent e) {
-        Query queryDeposito = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        Query queryDeposito = new Query(Criteria.where("_id").is(e.getDepositoId()));
 
         // 1. Verificamos si la entidad ya existe dentro de la lista 'entidadesAtendidas' del depósito
         Query queryEntidadExistente = new Query(
-                Criteria.where("depositoId").is(e.getDepositoId())
+                Criteria.where("_id").is(e.getDepositoId())
                         .and("entidadesAtendidas.entidadId").is(e.getEntidadId())
         );
 
@@ -721,7 +722,7 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.deposito-cantidad-asignacion-estado")
     public void onAsignacionEstadoReportada(DepositoCantidadAsignacionEstadoEvent e) {
-        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        Query query = new Query(Criteria.where("_id").is(e.getDepositoId()));
 
         // Incrementa en 1 la clave correspondiente dentro del Map en MongoDB de forma atómica
         Update update = new Update()
@@ -736,7 +737,7 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.deposito-donacion-ingresada")
     public void onDonacionIngresada(DepositoDonacionIngresadaEvent e) {
-        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        Query query = new Query(Criteria.where("_id").is(e.getDepositoId()));
 
         DepositoDoc.DonacionDepositoDoc nuevaDonacion = new DepositoDoc.DonacionDepositoDoc(
                 e.getDonacionId(),
@@ -758,7 +759,7 @@ public class ConsultasListener {
     public void onDonacionEntregada(DepositoDonacionEntregadaEvent e) {
         // Buscamos el depósito y el elemento dentro del array donacionesDeposito que coincida con la donacionId
         Query query = new Query(
-                Criteria.where("depositoId").is(e.getDepositoId())
+                Criteria.where("_id").is(e.getDepositoId())
                         .and("donacionesDeposito.donacionId").is(e.getDonacionId())
         );
 
