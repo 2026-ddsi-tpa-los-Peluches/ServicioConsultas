@@ -5,8 +5,10 @@ import ar.edu.utn.dds.k3003.documentos.NecesidadDoc;
 import ar.edu.utn.dds.k3003.dtos.donadoresYEntidades.*;
 import ar.edu.utn.dds.k3003.dtos.donadoresYEntidades.EstadoDonadorEnum;
 import ar.edu.utn.dds.k3003.documentos.DonadorDoc;
+import ar.edu.utn.dds.k3003.dtos.incentivos.InsigniaDTO;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -39,7 +41,11 @@ public class DonadoresYEntidadesDataMapper {
                 doc.getEstado() != null ? EstadoDonadorEnum.valueOf(doc.getEstado()) : null,
                 doc.getCategoriaActual(),
                 doc.getMisionActual() != null ? doc.getMisionActual().getMisionId() : null,
-                doc.getInsignias()
+                doc.getInsignias() != null ?
+                        doc.getInsignias().stream()
+                        .map(DonadorDoc.InsigniaDonadorDoc::getId) // Extraemos solo el String del ID
+                        .toList()
+                        : new ArrayList<>()
         );
     }
 
