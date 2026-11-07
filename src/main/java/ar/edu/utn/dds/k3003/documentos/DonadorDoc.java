@@ -48,7 +48,7 @@ public class DonadorDoc {
 
 
   // Insignias de un Donador
-  List<String> insignias = new ArrayList<>();
+  List<InsigniaDonadorDoc> insignias = new ArrayList<>();
 
   // Cantidad de donaciones por cada estado de donacion
   Map<String, Long> cantidadesPorEstado = new HashMap<>();
@@ -120,6 +120,21 @@ public class DonadorDoc {
   public static class CategoriaHistoricaDoc {
     String categoria;
     Instant fecha;
+  }
+
+  @Data
+  public static class InsigniaDonadorDoc {
+    private String id;
+    private String nombre;
+    private String descripcion;
+
+    public InsigniaDonadorDoc() {}
+
+    public InsigniaDonadorDoc(String id, String nombre, String descripcion) {
+      this.id = id;
+      this.nombre = nombre;
+      this.descripcion = descripcion;
+    }
   }
 
 }

@@ -1,13 +1,11 @@
 package ar.edu.utn.dds.k3003.listeners;
 
-import ar.edu.utn.dds.k3003.dtos.CategoriaHistoricaDTO;
 import ar.edu.utn.dds.k3003.documentos.*;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionCreadaEvent;
 import ar.edu.utn.dds.k3003.events.asignacionEvents.AsignacionEstadoEvent;
 import ar.edu.utn.dds.k3003.events.categoriaEvents.CategoriaCreadaEvent;
 import ar.edu.utn.dds.k3003.events.categoriaEvents.CategoriaEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.depositoEvents.*;
-import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionActualizadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionCreadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionEstadoActualizadoEvent;
@@ -18,8 +16,6 @@ import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorCreadoEvent;
 import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorEliminadoEvent;
 import ar.edu.utn.dds.k3003.events.insigniaEvents.InsigniaAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.insigniaEvents.InsigniaEliminadaEvent;
-import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
-import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.*;
 import ar.edu.utn.dds.k3003.events.paqueteEvents.PaqueteCreadoEvent;
 import ar.edu.utn.dds.k3003.events.paqueteEvents.PaqueteRestarCantidadEvent;
@@ -27,7 +23,6 @@ import ar.edu.utn.dds.k3003.events.productoEvents.ProductoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoCreadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoEliminadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.StockProductoModificadoEvent;
-import ar.edu.utn.dds.k3003.events.stockEvents.StockActualizadoEvent;
 import ar.edu.utn.dds.k3003.service.Actualizador;
 import ar.edu.utn.dds.k3003.service.ResumenDonador;
 
@@ -42,7 +37,6 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.List;
 
 @Component
 public class ConsultasListener {
@@ -263,21 +257,32 @@ public class ConsultasListener {
     }
 
     @RabbitListener(queues = "consultas.insignia-donador-agregada")
-    public void onInsigniaDonadorAgregada(InsigniaDonadorAgregadaEvent e) {
+    public void onInsigniaDonadorAgregada(DonadorInsigniaAgregadaEvent e) {
         Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
 
-        // .push() añade el id de la insignia al array 'insignias' del donador
-        Update update = new Update().push("insignias", e.getInsigniaId());
+        // Creamos el objeto del subdocumento que se va a insertar en el array
+        DonadorDoc.InsigniaDonadorDoc insigniaDoc = new DonadorDoc.InsigniaDonadorDoc(
+                e.getInsigniaId(),
+                e.getNombre(),
+                e.getDescripcion()
+        );
+
+        // .push() añade el objeto completo al array 'insignias'
+        Update update = new Update().push("insignias", insigniaDoc);
 
         mongo.updateFirst(query, update, DonadorDoc.class);
     }
 
     @RabbitListener(queues = "consultas.insignia-donador-quitada")
-    public void onInsigniaDonadorQuitada(InsigniaDonadorQuitadaEvent e) {
+    public void onInsigniaDonadorQuitada(DonadorInsigniaQuitadaEvent e) {
         Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
 
-        // .pull() busca la coincidencia exacta en el array 'insignias' y la elimina
-        Update update = new Update().pull("insignias", e.getInsigniaId());
+        // Creamos un objeto parcial o usamos un documento con el ID para que $pull identifique cuál remover del array basándose en el campo 'id'
+        DonadorDoc.InsigniaDonadorDoc insigniaDoc = new DonadorDoc.InsigniaDonadorDoc();
+        insigniaDoc.setId(e.getInsigniaId());
+
+        // .pull() busca dentro del array 'insignias' el elemento que coincida y lo elimina
+        Update update = new Update().pull("insignias", insigniaDoc);
 
         mongo.updateFirst(query, update, DonadorDoc.class);
     }
