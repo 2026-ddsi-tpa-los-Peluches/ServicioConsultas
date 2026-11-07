@@ -63,11 +63,16 @@ public class RabbitConfig {
                 // CATEGORIA
                 "categoria-creada","categoria-eliminada",
 
+                // SUBCATEGORIA
+                "subcategoria-agregada",
+
+
                 // IDENTIFICADOR
                 "identificador-creado", "identificador-eliminado",
 
                 // PAQUETE
                 "paquete-creado", "paquete-restar-cantidad"
+
         )) {
             Queue cola = QueueBuilder.durable("consultas." + nombre).build();
             elementos.add(cola);

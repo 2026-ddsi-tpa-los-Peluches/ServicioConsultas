@@ -23,6 +23,7 @@ import ar.edu.utn.dds.k3003.events.productoEvents.ProductoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoCreadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.ProductoEliminadoEvent;
 import ar.edu.utn.dds.k3003.events.productoEvents.StockProductoModificadoEvent;
+import ar.edu.utn.dds.k3003.events.subcategoriaEvents.SubCategoriaAgregadaEvent;
 import ar.edu.utn.dds.k3003.service.Actualizador;
 import ar.edu.utn.dds.k3003.service.ResumenDonador;
 
@@ -876,6 +877,25 @@ public class ConsultasListener {
         mongo.remove(query, CategoriaDoc.class);
 
         System.out.println("CategoriaDoc eliminada de MongoDB para el ID: " + e.id());
+    }
+
+
+
+    // ----------------------
+    //      SUBCATEGORIAS
+    // ----------------------
+
+    @RabbitListener(queues = "consultas.subcategoria-agregada")
+    public void onSubCategoriaAgregada(SubCategoriaAgregadaEvent e) {
+        Query query = new Query(Criteria.where("id").is(e.getId()));
+
+        Update update = new Update()
+                .set("nombre", e.getNombre())
+                .set("descripcion", e.getDescripcion())
+                .set("categoriaId", e.getCategoriaId());
+
+        // Upsert actualiza si existe, o inserta si es nueva
+        mongo.upsert(query, update, SubCategoriaDoc.class);
     }
 
 
