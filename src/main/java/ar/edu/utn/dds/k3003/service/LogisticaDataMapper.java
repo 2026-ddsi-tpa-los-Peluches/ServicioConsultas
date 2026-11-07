@@ -1,6 +1,7 @@
 package ar.edu.utn.dds.k3003.service;
 
 import ar.edu.utn.dds.k3003.documentos.AsignacionDoc;
+import ar.edu.utn.dds.k3003.documentos.PaqueteDoc;
 import ar.edu.utn.dds.k3003.dtos.logistica.*;
 import ar.edu.utn.dds.k3003.documentos.DepositoDoc;
 import org.springframework.stereotype.Component;
@@ -68,4 +69,17 @@ public class LogisticaDataMapper {
                 estadoEnum
         );
     }
+
+    public PaqueteDTO toPaqueteDTO(PaqueteDoc doc) {
+        if (doc == null) return null;
+
+        return new PaqueteDTO(
+                doc.getPaqueteId(), // Ojo, revisá si el DTO de cátedra espera String o Integer para el ID
+                doc.getDonacionID(),
+                doc.getProductoID(),
+                doc.getCantidad()
+        );
+    }
+
+
 }
