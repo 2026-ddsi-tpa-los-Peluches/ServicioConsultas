@@ -64,7 +64,7 @@ public class RabbitConfig {
                 "entidad-creada", "entidad-actualizada",
 
                 // CATEGORIA
-                "categoria-creada", "categoria-creada",
+                "categoria-creada","categoria-eliminada",
 
                 // IDENTIFICADOR
                 "identificador-creado", "identificador-eliminado",

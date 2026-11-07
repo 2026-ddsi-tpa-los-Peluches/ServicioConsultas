@@ -1,7 +1,7 @@
 package ar.edu.utn.dds.k3003.controllers.Logistica.requests;
 
 
-import ar.edu.utn.dds.k3003.catedra.dtos.logistica.TipoAlgoritmoEnum;
+import ar.edu.utn.dds.k3003.dtos.logistica.TipoAlgoritmoEnum;
 
 public record DepositoRequest(
         String nombre,
