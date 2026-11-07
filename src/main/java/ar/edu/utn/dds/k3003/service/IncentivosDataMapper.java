@@ -11,7 +11,7 @@ public class IncentivosDataMapper {
 
     public InsigniaDTO toInsigniaDTO(InsigniaDoc doc) {
         if (doc == null) return null;
-        String idStr = doc.getInsigniaId() != null ? doc.getInsigniaId().toString() : doc.getId();
+        String idStr = doc.getInsigniaId().toString();
         return new InsigniaDTO(idStr, doc.getNombre(), doc.getDescripcion());
     }
 
