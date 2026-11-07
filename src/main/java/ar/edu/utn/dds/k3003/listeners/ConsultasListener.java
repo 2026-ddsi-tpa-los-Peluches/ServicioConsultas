@@ -629,6 +629,20 @@ public class ConsultasListener {
     }
 
 
+    @RabbitListener(queues = "consultas.necesidad-cantidad-recibida")
+    public void onNecesidadCantidadRecibida(NecesidadAsignacionPendiente e) {
+        
+     Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
+
+     Update update = new Update()
+                .set("cantidadRecibida", e.getCantidad());
+
+        // Ejecutamos la actualización atómica en MongoDB
+        mongo.updateFirst(query, update, NecesidadDoc.class);
+        
+    }
+
+
     // ---------------
     //    DEPOSITO
     // ---------------
