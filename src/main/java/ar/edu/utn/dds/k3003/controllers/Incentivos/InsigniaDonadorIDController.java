@@ -1,7 +1,7 @@
 package ar.edu.utn.dds.k3003.controllers.Incentivos;
 
-import ar.edu.utn.dds.k3003.documentos.DonadorDoc;
-import ar.edu.utn.dds.k3003.repositories.DonadoresYEntidades.DonadorMongoRepository;
+import ar.edu.utn.dds.k3003.dtos.incentivos.*;
+import ar.edu.utn.dds.k3003.service.ServiceInsignia;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,20 +12,19 @@ import java.util.NoSuchElementException;
 @RequestMapping("/insigniasDonador/{donadorID}")
 public class InsigniaDonadorIDController {
 
-//    private final DonadorMongoRepository donadorDocRepository;
-//
-//    public InsigniaDonadorIDController(DonadorMongoRepository donadorDocRepository) {
-//        this.donadorDocRepository = donadorDocRepository;
-//    }
-//
-//    @GetMapping
-//    public ResponseEntity<List<String>> getAllInsigniasDonador(@PathVariable String donadorID) {
-//        try {
-//            DonadorDoc donador = donadorDocRepository.findByDonadorId(donadorID)
-//                    .orElseThrow(() -> new NoSuchElementException("Donador no encontrado: " + donadorID));
-//            return ResponseEntity.ok(donador.getInsignias());
-//        } catch (NoSuchElementException e) {
-//            return ResponseEntity.notFound().build();
-//        }
-//    }
+    private final ServiceInsignia serviceInsignia;
+
+    public InsigniaDonadorIDController(ServiceInsignia serviceInsignia) {
+        this.serviceInsignia = serviceInsignia;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<InsigniaDTO>> getAllInsigniasDonador(@PathVariable String donadorID) {
+        try {
+            List<InsigniaDTO> insignias = serviceInsignia.obtenerPorDonador(donadorID);
+            return ResponseEntity.ok(insignias);
+        } catch (NoSuchElementException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
 }

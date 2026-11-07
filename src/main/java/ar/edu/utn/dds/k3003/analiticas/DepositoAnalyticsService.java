@@ -23,7 +23,7 @@ public class DepositoAnalyticsService {
 
         // 1. Armamos el pipeline con los Document crutos de MongoDB
         List<Document> pipeline = List.of(
-                Document.parse("{ $match: { depositoId: '" + depositoId + "' } }"),
+                Document.parse("{ $match: { _id: '" + depositoId + "' } }"),
                 Document.parse("""
                 {
                     $project: {
