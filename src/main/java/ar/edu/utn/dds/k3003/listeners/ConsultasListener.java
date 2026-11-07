@@ -16,6 +16,8 @@ import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorCreadoEvent;
 import ar.edu.utn.dds.k3003.events.identificadorEvents.IdentificadorEliminadoEvent;
 import ar.edu.utn.dds.k3003.events.insigniaEvents.InsigniaAgregadaEvent;
 import ar.edu.utn.dds.k3003.events.insigniaEvents.InsigniaEliminadaEvent;
+import ar.edu.utn.dds.k3003.events.misionEvents.MisionAgregadaEvent;
+import ar.edu.utn.dds.k3003.events.misionEvents.MisionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.necesidadEvents.*;
 import ar.edu.utn.dds.k3003.events.paqueteEvents.PaqueteCreadoEvent;
 import ar.edu.utn.dds.k3003.events.paqueteEvents.PaqueteRestarCantidadEvent;
@@ -319,26 +321,35 @@ public class ConsultasListener {
     //-------------------------------
     //      MISIONES
     //-------------------------------
-    @RabbitListener(queues = "consultas.insignia-agregada")
-    public void onInsigniaSincronizada(InsigniaAgregadaEvent e) {
-        Query query = new Query(Criteria.where("insigniaId").is(e.getInsigniaId()));
+    @RabbitListener(queues = "consultas.mision-agregada")
+    public void onMisionAgregada(MisionAgregadaEvent e) {
+        // Al ser Integer en el documento, usamos e.getMisionId() directamente
+        Query query = new Query(Criteria.where("misionId").is(e.getMisionId()));
 
         Update update = new Update()
+                .set("misionId", e.getMisionId())
                 .set("nombre", e.getNombre())
-                .set("descripcion", e.getDescripcion());
+                .set("insigniaId", e.getInsigniaId())
+                .set("categoriaInicio", e.getCategoriaInicio())
+                .set("categoriaFin", e.getCategoriaFin())
+                .set("tipoMision", e.getTipoMision());
 
-        // Upsert actualiza si existe, o inserta si es nueva
-        mongo.upsert(query, update, InsigniaDoc.class);
+        // Upsert: crea el documento si no existe o lo actualiza si ya se encontraba registrado
+        mongo.upsert(query, update, MisionDoc.class);
+        System.out.println("MisionDoc sincronizada en MongoDB para el ID: " + e.getMisionId());
     }
 
-    @RabbitListener(queues = "consultas.insignia-eliminada")
-    public void onInsigniaEliminada(InsigniaEliminadaEvent e) {
-        Query query = new Query(Criteria.where("insigniaId").is(e.getInsigniaId()));
+    @RabbitListener(queues = "consultas.mision-eliminada")
+    public void onMisionEliminada(MisionEliminadaEvent e) {
+        // Convertimos el String del evento a Integer porque el id en MisionDoc es de tipo Integer
+        Integer misionIdInt = Integer.valueOf(e.getMisionId());
 
-        // Elimina el documento del catálogo de MongoDB
-        mongo.remove(query, InsigniaDoc.class);
+        Query query = new Query(Criteria.where("misionId").is(misionIdInt));
+
+        // Removemos el documento de la colección de MongoDB
+        mongo.remove(query, MisionDoc.class);
+        System.out.println("MisionDoc eliminada de MongoDB para el ID: " + misionIdInt);
     }
-
 
 
 
@@ -581,16 +592,18 @@ public class ConsultasListener {
     // ---------------
     @RabbitListener(queues = "consultas.deposito-creado")
     public void onDepositoCreado(DepositoCreadoEvent e) {
-        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        // CORRECCIÓN: Buscamos por "id" para que coincida con el @Id de DepositoDoc
+        Query query = new Query(Criteria.where("id").is(e.getDepositoId()));
 
         Update update = new Update()
-                .set("depositoId", e.getDepositoId())
+                .set("id", e.getDepositoId())
                 .set("nombre", e.getNombre())
                 .set("direccion", e.getDireccion())
                 .set("algoritmoMatchmaking", e.getAlgoritmoMatchmaking())
                 .set("capacidadMaxima", e.getCapacidadMaxima())
                 .set("ultimaActualizacion", Instant.now());
 
+        // Upsert actualizará o creará el documento usando el ID de Postgres como _id en Mongo
         mongo.upsert(query, update, DepositoDoc.class);
         System.out.println("DepositoDoc creado/sincronizado en MongoDB para ID: " + e.getDepositoId());
     }

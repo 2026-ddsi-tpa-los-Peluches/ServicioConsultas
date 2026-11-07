@@ -18,7 +18,7 @@ public class RabbitConfig {
 
     public static final String EXCHANGE = "donatrack.eventos";
 
-    @Bean
+    @Bean(name = "workerRabbitChannel")
     Declarables colasYBindings() {
         TopicExchange exchange = new TopicExchange(EXCHANGE);
         List<Declarable> elementos = new ArrayList<>();
