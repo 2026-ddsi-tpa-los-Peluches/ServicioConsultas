@@ -581,16 +581,18 @@ public class ConsultasListener {
     // ---------------
     @RabbitListener(queues = "consultas.deposito-creado")
     public void onDepositoCreado(DepositoCreadoEvent e) {
-        Query query = new Query(Criteria.where("depositoId").is(e.getDepositoId()));
+        // CORRECCIÓN: Buscamos por "id" para que coincida con el @Id de DepositoDoc
+        Query query = new Query(Criteria.where("id").is(e.getDepositoId()));
 
         Update update = new Update()
-                .set("depositoId", e.getDepositoId())
+                .set("id", e.getDepositoId())
                 .set("nombre", e.getNombre())
                 .set("direccion", e.getDireccion())
                 .set("algoritmoMatchmaking", e.getAlgoritmoMatchmaking())
                 .set("capacidadMaxima", e.getCapacidadMaxima())
                 .set("ultimaActualizacion", Instant.now());
 
+        // Upsert actualizará o creará el documento usando el ID de Postgres como _id en Mongo
         mongo.upsert(query, update, DepositoDoc.class);
         System.out.println("DepositoDoc creado/sincronizado en MongoDB para ID: " + e.getDepositoId());
     }
