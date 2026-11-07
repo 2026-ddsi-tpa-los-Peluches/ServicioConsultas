@@ -584,6 +584,53 @@ public class ConsultasListener {
         System.out.println("Cantidad recibida incrementada en " + e.getCantidad() + " para la necesidad: " + e.getNecesidadId());
     }
 
+    @RabbitListener(queues = "consultas.necesidad-asignacion-pendiente")
+    public void onNecesidadAsignacionPendiente(NecesidadAsignacionPendiente e) {
+        // 1. Buscamos la necesidad a través de su ID (convertido a String para matchear con el @Id de NecesidadDoc)
+        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
+
+        // 2. Armamos el subdocumento que se va a insertar en la lista de pendientes
+        NecesidadDoc.AsignacionPendienteDoc pendienteDoc = new NecesidadDoc.AsignacionPendienteDoc(
+                e.getAsignacionId(),
+                e.getDepositoId(),
+                e.getUnidades()
+        );
+
+        // 3. Usamos .push() para agregar la asignación pendiente al array y actualizamos la fecha de última actualización
+        Update update = new Update()
+                .push("asignacionesPendientes", pendienteDoc)
+                .set("ultimaActualizacion", e.getFechaEvento());
+
+        // Ejecutamos la actualización atómica en MongoDB
+        mongo.updateFirst(query, update, NecesidadDoc.class);
+
+        System.out.println(" [x] Asignación pendiente " + e.getAsignacionId() + " agregada a la necesidad ID: " + e.getNecesidadId());
+    }
+
+    @RabbitListener(queues = "consultas.necesidad-asignacion-hecha")
+    public void onNecesidadAsignacionHecha(NecesidadAsignacionHecha e) {
+        // 1. Buscamos la necesidad a través de su ID
+        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
+
+        // 2. Creamos una instancia de AsignacionPendienteDoc con el ID a remover.
+        // MongoDB utilizará este ID para encontrar y eliminar el elemento coincidente dentro del array.
+        NecesidadDoc.AsignacionPendienteDoc pendienteParaRemover = new NecesidadDoc.AsignacionPendienteDoc(
+                e.getAsignacionId(),
+                null,
+                0
+        );
+
+        // 3. Usamos el operador .pull() para quitar la asignación del array y actualizamos el timestamp
+        Update update = new Update()
+                .pull("asignacionesPendientes", pendienteParaRemover)
+                .set("ultimaActualizacion", e.getFechaEvento());
+
+        // Ejecutamos la actualización atómica en MongoDB
+        mongo.updateFirst(query, update, NecesidadDoc.class);
+
+        System.out.println(" [x] Asignación " + e.getAsignacionId() + " removida de pendientes (completada) para la necesidad ID: " + e.getNecesidadId());
+    }
+
 
     // ---------------
     //    DEPOSITO
