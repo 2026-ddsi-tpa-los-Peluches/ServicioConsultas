@@ -628,22 +628,6 @@ public class ConsultasListener {
         System.out.println(" [x] Asignación " + e.getAsignacionId() + " removida de pendientes (completada) para la necesidad ID: " + e.getNecesidadId());
     }
 
-    @RabbitListener(queues = "consultas.necesidad-satisfecha")
-    public void onNecesidadSatisfecha(CantidadRecibidaActualizadaEvent e) {
-
-        // 1. Buscamos la necesidad por su ID de String (coincidente con el record NecesidadDoc)
-        Query query = new Query(Criteria.where("id").is(e.getNecesidadId()));
-
-        // 2. Incrementamos la cantidad recibida e actualizamos la fecha de última modificación
-        Update update = new Update()
-                .inc("cantidadRecibida", e.getCantidad())
-                .set("ultimaActualizacion", Instant.now());
-
-        mongo.updateFirst(query, update, NecesidadDoc.class);
-
-        System.out.println("Cantidad recibida incrementada en " + e.getCantidad() + " para la necesidad: " + e.getNecesidadId());
-    }
-
 
 
     @RabbitListener(queues = "consultas.necesidad-cantidad-recibida")
