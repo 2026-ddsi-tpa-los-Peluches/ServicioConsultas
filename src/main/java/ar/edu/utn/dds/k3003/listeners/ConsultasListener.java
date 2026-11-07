@@ -57,7 +57,7 @@ public class ConsultasListener {
     //         DONADOR
     // --------------------------
 
-    @RabbitListener(queues = "consultas.donador-creado")
+    @RabbitListener(queues = "consultas.donador-creado") // verificado
     public void onDonadorCreado(DonadorCreadoEvent e) {
         // Convertimos el ID numérico de postgres a String para que coincida con donadorId de MongoDoc
         String donadorIdStr = String.valueOf(e.getId());
@@ -83,14 +83,14 @@ public class ConsultasListener {
     }
 
     // 1) cambiar estado de donador
-    @RabbitListener(queues = "consultas.donador-estado")
+    @RabbitListener(queues = "consultas.donador-estado")  // verificado
     public void onDonadorEstado(DonadorEstadoActualizadoEvent e) {
         actualizador.aplicarSiEsMasNuevo(DonadorDoc.class, e.donadorId(),
                 "estadoActualizadoEn", e.fechaEvento(),
                 new Update().set("estado", e.estado()));
     }
 
-    @RabbitListener(queues = "consultas.donador-mision-asignar")
+    @RabbitListener(queues = "consultas.donador-mision-asignar") // verificado
     public void onAsignarMisionDonador(AsignarMisionDonadorEvent e) {
         String donadorIdStr = String.valueOf(e.getDonadorId());
 
@@ -125,26 +125,24 @@ public class ConsultasListener {
         registroHistorico.setCategoria(e.nuevaCategoria());
         registroHistorico.setFecha(e.fechaCambio());
 
-        // 2. Preparamos los cambios que aplican si el evento es el más nuevo (actualiza el estado actual)
+        // 2. Preparamos los cambios para actualizar la categoría actual y pushear al historial
         Update cambiosPrincipal = new Update()
                 .set("categoriaActual", e.nuevaCategoria())
                 .push("historialCategorias", registroHistorico);
 
-        // 3. Usamos tu método inteligente aplicarSiEsMasNuevo para la categoría actual y el campo de fecha.
-        // (Nota: asume que en tu DonadorDoc el ID del documento es "donadorId" o "_id" según cómo lo manejes).
+        // 3. Aplicamos inteligentemente respetando el orden cronológico con el actualizador
         boolean aplicoEstadoActual = actualizador.aplicarSiEsMasNuevo(
                 DonadorDoc.class,
                 e.donadorId(),
-                "categoriaActualizadaEn",
+                "categoriaActualizadaEn", // Campo de control de fecha en Mongo
                 e.fechaCambio(),
                 cambiosPrincipal
         );
 
         if (!aplicoEstadoActual) {
-            Query querySoloHistorial = new Query();
+            Query querySoloHistorial = new Query(Criteria.where("donadorId").is(e.donadorId()));
             Update updateHistorial = new Update().push("historialCategorias", registroHistorico);
 
-            // Insertamos el registro en el array del historial sin alterar la categoría actual
             mongo.updateFirst(querySoloHistorial, updateHistorial, DonadorDoc.class);
         }
     }
