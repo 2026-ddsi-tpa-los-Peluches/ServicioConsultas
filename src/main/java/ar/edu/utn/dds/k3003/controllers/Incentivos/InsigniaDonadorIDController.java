@@ -12,20 +12,20 @@ import java.util.NoSuchElementException;
 @RequestMapping("/insigniasDonador/{donadorID}")
 public class InsigniaDonadorIDController {
 
-    private final DonadorMongoRepository donadorDocRepository;
-
-    public InsigniaDonadorIDController(DonadorMongoRepository donadorDocRepository) {
-        this.donadorDocRepository = donadorDocRepository;
-    }
-
-    @GetMapping
-    public ResponseEntity<List<String>> getAllInsigniasDonador(@PathVariable String donadorID) {
-        try {
-            DonadorDoc donador = donadorDocRepository.findByDonadorId(donadorID)
-                    .orElseThrow(() -> new NoSuchElementException("Donador no encontrado: " + donadorID));
-            return ResponseEntity.ok(donador.getInsignias());
-        } catch (NoSuchElementException e) {
-            return ResponseEntity.notFound().build();
-        }
-    }
+//    private final DonadorMongoRepository donadorDocRepository;
+//
+//    public InsigniaDonadorIDController(DonadorMongoRepository donadorDocRepository) {
+//        this.donadorDocRepository = donadorDocRepository;
+//    }
+//
+//    @GetMapping
+//    public ResponseEntity<List<String>> getAllInsigniasDonador(@PathVariable String donadorID) {
+//        try {
+//            DonadorDoc donador = donadorDocRepository.findByDonadorId(donadorID)
+//                    .orElseThrow(() -> new NoSuchElementException("Donador no encontrado: " + donadorID));
+//            return ResponseEntity.ok(donador.getInsignias());
+//        } catch (NoSuchElementException e) {
+//            return ResponseEntity.notFound().build();
+//        }
+//    }
 }
