@@ -262,6 +262,26 @@ public class ConsultasListener {
         }
     }
 
+    @RabbitListener(queues = "consultas.insignia-donador-agregada")
+    public void onInsigniaDonadorAgregada(InsigniaDonadorAgregadaEvent e) {
+        Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
+
+        // .push() añade el id de la insignia al array 'insignias' del donador
+        Update update = new Update().push("insignias", e.getInsigniaId());
+
+        mongo.updateFirst(query, update, DonadorDoc.class);
+    }
+
+    @RabbitListener(queues = "consultas.insignia-donador-quitada")
+    public void onInsigniaDonadorQuitada(InsigniaDonadorQuitadaEvent e) {
+        Query query = new Query(Criteria.where("donadorId").is(e.getDonadorId()));
+
+        // .pull() busca la coincidencia exacta en el array 'insignias' y la elimina
+        Update update = new Update().pull("insignias", e.getInsigniaId());
+
+        mongo.updateFirst(query, update, DonadorDoc.class);
+    }
+
     // ------------------
     //      INSIGNIAS
     // ------------------
