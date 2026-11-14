@@ -18,7 +18,6 @@ public class LogisticaDataMapper {
         List<PaqueteDTO> stock = doc.getPaquetesDeposito() != null
                 ? doc.getPaquetesDeposito().stream()
                   .map(p -> new PaqueteDTO(
-                          p.getPaqueteId(),
                           p.getDonacionID(),
                           p.getProductoID(),
                           p.getCantidad()
@@ -74,7 +73,6 @@ public class LogisticaDataMapper {
         if (doc == null) return null;
 
         return new PaqueteDTO(
-                doc.getPaqueteId(), // Ojo, revisá si el DTO de cátedra espera String o Integer para el ID
                 doc.getDonacionID(),
                 doc.getProductoID(),
                 doc.getCantidad()
