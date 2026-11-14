@@ -32,8 +32,9 @@ public class DonacionesDataMapper {
                 doc.getNombre(),
                 doc.getDescripcion(),
                 doc.getCategoriaId(),
-                doc.getIdentificadorId()
-        );
+                doc.getIdentificadorId(),
+                doc.getSubcategoriaId() != null ? Long.parseLong(doc.getSubcategoriaId()) : 0L
+                );
     }
 
     public IdentificadorDTO toIdentificadorDTO(IdentificadorDoc doc) {
