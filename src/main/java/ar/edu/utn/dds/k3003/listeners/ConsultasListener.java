@@ -208,11 +208,16 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.donador-donacion-estado")
     public void onDonadorDonacionEstado(ActualizarCantidadDonacionesEstadoEvent evento) {
+        // Si no hay estado nuevo válido, no hacemos nada
+        if (evento.estadoNuevo() == null || evento.estadoNuevo().isBlank() || "null".equalsIgnoreCase(evento.estadoNuevo())) {
+            return;
+        }
+
         Query query = new Query(Criteria.where("donadorId").is(evento.donadorID()));
         Update update = new Update();
 
-        // 1. Si hay un estado anterior válido (no es null ni vacío), restamos 1 al viejo
-        if (evento.estadoAnterior() != null && !evento.estadoAnterior().isEmpty()) {
+        // 1. Si hay un estado anterior válido (ni null, ni vacío, ni la palabra "null"), restamos 1
+        if (evento.estadoAnterior() != null && !evento.estadoAnterior().isBlank() && !"null".equalsIgnoreCase(evento.estadoAnterior())) {
             String campoEstadoAnterior = "cantidadesPorEstado." + evento.estadoAnterior();
             update.inc(campoEstadoAnterior, -1L);
         }
@@ -223,10 +228,7 @@ public class ConsultasListener {
 
         update.set("ultimaActualizacion", Instant.now());
 
-        // 3. Upsert atómico: crea el documento y el mapa si no existen
         mongo.upsert(query, update, DonadorDoc.class);
-
-        System.out.println(" [x] Cantidades por estado actualizadas para el donador ID: " + evento.donadorID());
     }
 
 
