@@ -8,6 +8,7 @@ import ar.edu.utn.dds.k3003.events.categoriaEvents.CategoriaEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.depositoEvents.*;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionConQuejaRegistradaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionCreadaEvent;
+import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionEliminadaEvent;
 import ar.edu.utn.dds.k3003.events.donacionEvents.DonacionEstadoActualizadoEvent;
 import ar.edu.utn.dds.k3003.events.donadorEvents.*;
 import ar.edu.utn.dds.k3003.events.entidadEvents.EntidadBeneficaActualizadaEvent;
@@ -429,6 +430,16 @@ public class ConsultasListener {
         mongo.updateFirst(query, update, DonacionDoc.class);
 
         System.out.println("Estado actualizado a '" + e.nuevoEstado() + "' en DonacionDoc ID: " + e.donacionId());
+    }
+
+    @RabbitListener(queues = "consultas.donacion-eliminada")
+    public void onDonacionEliminada(DonacionEliminadaEvent e) {
+        Query query = new Query(Criteria.where("_id").is(e.donacionId()));
+
+        // Eliminamos el documento de la colección 'donaciones' en MongoDB
+        mongo.remove(query, DonacionDoc.class);
+
+        System.out.println(" [x] Donación eliminada de MongoDB - ID: " + e.donacionId());
     }
 
 
