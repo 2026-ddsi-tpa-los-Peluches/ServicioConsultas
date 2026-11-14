@@ -40,7 +40,7 @@ public class RabbitConfig {
                 "insignia-agregada", "insignia-eliminada",
 
                 // DONACION
-                "donacion-creada", "donacion-queja", "donacion-estado-actualizado",
+                "donacion-creada", "donacion-queja", "donacion-estado-actualizado", "donacion-eliminada",
 
                 // NECESIDAD
                 "necesidad-cantidad-recibida", "necesidad-asignacion-pendiente", "necesidad-asignacion-hecha",
