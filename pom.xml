@@ -68,6 +68,14 @@
       <artifactId>spring-boot-starter-test</artifactId>
       <scope>test</scope>
     </dependency>
+
+    <!-- Mongo embebido para poder testear los pipelines de agregación sin depender de Atlas -->
+    <dependency>
+      <groupId>de.flapdoodle.embed</groupId>
+      <artifactId>de.flapdoodle.embed.mongo.spring3x</artifactId>
+      <version>4.18.0</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>

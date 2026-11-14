@@ -54,7 +54,9 @@ public class DonacionesAnalyticsService {
                     }
                 }
                 """),
-                Document.parse("{ $sort: { proporcionQuejas: -1 } }")
+                // Orden secundario determinístico (por categoría y subcategoría) para que los empates
+                // en proporcionQuejas no salgan en un orden distinto entre llamadas.
+                Document.parse("{ $sort: { proporcionQuejas: -1, categoria: 1, subcategoria: 1 } }")
         );
 
         List<Document> proporcionQuejas = mongoTemplate.getCollection("donaciones")
@@ -67,13 +69,19 @@ public class DonacionesAnalyticsService {
                 {
                     $project: {
                         donadorId: '$_id',
+                        nombre: 1,
+                        apellido: 1,
                         estado: 1,
                         categoriaActual: 1,
                         cantidadQuejas: { $size: { $ifNull: ['$quejas', []] } }
                     }
                 }
                 """),
-                Document.parse("{ $sort: { cantidadQuejas: -1 } }"),
+                // Solo donadores con quejas de verdad.
+                Document.parse("{ $match: { cantidadQuejas: { $gt: 0 } } }"),
+                // Orden secundario determinístico (por donadorId) para que los empates en
+                // cantidadQuejas no salgan en un orden distinto entre llamadas.
+                Document.parse("{ $sort: { cantidadQuejas: -1, donadorId: 1 } }"),
                 Document.parse("{ $limit: " + limiteDonadores + " }")
         );
 

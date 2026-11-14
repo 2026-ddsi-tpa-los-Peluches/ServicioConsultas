@@ -26,9 +26,14 @@ public class DepositoAnaliticaController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant fechaFin
     ) {
         try {
+            if (fechaFin.isBefore(fechaInicio)) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("fechaFin no puede ser anterior a fechaInicio.");
+            }
+
             // Llamamos al servicio que ejecuta el pipeline de agregación en MongoDB
             DepositoReporteDTO reporte = this.analyticsService.obtenerReporteDeposito(depositoId, fechaInicio, fechaFin);
-            
+
             if (reporte == null) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body("No se encontró información analítica para el depósito ID: " + depositoId);
             }

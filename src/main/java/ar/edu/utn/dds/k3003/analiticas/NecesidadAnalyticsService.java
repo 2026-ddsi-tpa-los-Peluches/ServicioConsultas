@@ -22,37 +22,29 @@ public class NecesidadAnalyticsService {
             String categoriaProducto,
             String subcategoriaProducto
     ) {
-        // Construimos dinámicamente las condiciones del $match
-        List<String> matchConditions = new ArrayList<>();
-        
-        // Filtro base: Necesidades insatisfechas (cantidadRecibida < cantidadObjetivo)
-        matchConditions.add(" $expr: { $lt: ['$cantidadRecibida', '$cantidadObjetivo'] } ");
+        List<Document> pipeline = new ArrayList<>();
 
+        // Filtro base (Documents, no Strings interpolados: evita romper la consulta o inyectar
+        // operadores si el filtro trae comillas): necesidades insatisfechas + filtros opcionales
+        // que no dependen de la categoría/subcategoría resuelta (esos van después del $lookup).
+        Document matchBase = new Document(
+                "$expr", new Document("$lt", List.of("$cantidadRecibida", "$cantidadObjetivo")));
         if (urgenciaMinima != null) {
-            matchConditions.add(" nivelUrgencia: { $gte: " + urgenciaMinima + " } ");
+            matchBase.append("nivelUrgencia", new Document("$gte", urgenciaMinima));
         }
         if (tipoNecesidad != null && !tipoNecesidad.isBlank()) {
-            matchConditions.add(" tipoNecesidad: '" + tipoNecesidad + "' ");
+            matchBase.append("tipoNecesidad", tipoNecesidad);
         }
-        if (categoriaProducto != null && !categoriaProducto.isBlank()) {
-            matchConditions.add(" categoriaProducto: '" + categoriaProducto + "' ");
-        }
-        if (subcategoriaProducto != null && !subcategoriaProducto.isBlank()) {
-            matchConditions.add(" subcategoriaProducto: '" + subcategoriaProducto + "' ");
-        }
+        pipeline.add(new Document("$match", matchBase));
 
-        String matchQuery = "{ $match: { " + String.join(", ", matchConditions) + " } }";
+        // Ordenamiento por urgencia descendente (mayor urgencia primero)
+        pipeline.add(Document.parse("{ $sort: { nivelUrgencia: -1 } }"));
 
-        // Pipeline de agregación de MongoDB
-        List<Document> pipeline = List.of(
-                // 1. Match con filtros y exclusión de satisfechas
-                Document.parse(matchQuery),
-
-                // 2. Ordenamiento por urgencia descendente (mayor urgencia primero)
-                Document.parse("{ $sort: { nivelUrgencia: -1 } }"),
-
-                // 3. Lookup (Join) con la colección de productos para traer el stock por depósito
-                Document.parse("""
+        // Lookup (Join) con la colección de productos: de ahí sacamos el stock por depósito y,
+        // como el producto sí tiene la categoría/subcategoría resueltas (igual que en Consulta 4),
+        // también resolvemos categoriaProducto/subcategoriaProducto en vez de confiar en el campo
+        // crudo de la necesidad (que llega sin la subcategoría).
+        pipeline.add(Document.parse("""
                 {
                     $lookup: {
                         from: 'productos',
@@ -61,13 +53,69 @@ public class NecesidadAnalyticsService {
                         as: 'infoProducto'
                     }
                 }
-                """),
+                """));
+        pipeline.add(Document.parse("{ $unwind: { path: '$infoProducto', preserveNullAndEmptyArrays: true } }"));
 
-                // 4. Unwind para aplanar el resultado del lookup (si existe el producto)
-                Document.parse("{ $unwind: { path: '$infoProducto', preserveNullAndEmptyArrays: true } }"),
+        // Lookup con las asignaciones de Logística: las pendientes (ASIGNADA, todavía no entregadas)
+        // de esta necesidad se calculan desde la colección "asignaciones" (la misma que usa la
+        // Consulta 3), en vez de depender del array asignacionesPendientes que se mantenía a mano
+        // con push/pull en el listener.
+        pipeline.add(Document.parse("""
+                {
+                    $lookup: {
+                        from: 'asignaciones',
+                        localField: '_id',
+                        foreignField: 'necesidadId',
+                        as: 'asignacionesDeLaNecesidad'
+                    }
+                }
+                """));
 
-                // 5. Project final para armar la estructura limpia solicitada
-                Document.parse("""
+        pipeline.add(Document.parse("""
+                {
+                    $addFields: {
+                        categoriaProductoResuelta: { $ifNull: ['$infoProducto.categoriaNombre', '$categoriaProducto'] },
+                        subcategoriaProductoResuelta: { $ifNull: ['$infoProducto.subcategoriaNombre', '$subcategoriaProducto'] },
+                        asignacionesPendientesResueltas: {
+                            $map: {
+                                input: {
+                                    $filter: {
+                                        input: '$asignacionesDeLaNecesidad',
+                                        as: 'a',
+                                        cond: { $eq: ['$$a.estado', 'ASIGNADA'] }
+                                    }
+                                },
+                                as: 'a',
+                                in: { asignacionId: '$$a._id', depositoId: '$$a.depositoId', unidades: '$$a.unidades' }
+                            }
+                        }
+                    }
+                }
+                """));
+
+        // Filtros de categoría/subcategoría: se aplican sobre el valor ya resuelto para aceptar
+        // tanto el id (como lo tiene la necesidad o el producto) como el nombre.
+        List<Document> postMatchConditions = new ArrayList<>();
+        if (categoriaProducto != null && !categoriaProducto.isBlank()) {
+            postMatchConditions.add(new Document("$or", List.of(
+                    new Document("categoriaProducto", categoriaProducto),
+                    new Document("categoriaProductoResuelta", categoriaProducto),
+                    new Document("infoProducto.categoriaId", categoriaProducto))));
+        }
+        if (subcategoriaProducto != null && !subcategoriaProducto.isBlank()) {
+            postMatchConditions.add(new Document("$or", List.of(
+                    new Document("subcategoriaProductoResuelta", subcategoriaProducto),
+                    new Document("infoProducto.subcategoriaId", subcategoriaProducto))));
+        }
+        if (!postMatchConditions.isEmpty()) {
+            Document postMatch = postMatchConditions.size() == 1
+                    ? postMatchConditions.get(0)
+                    : new Document("$and", postMatchConditions);
+            pipeline.add(new Document("$match", postMatch));
+        }
+
+        // Project final para armar la estructura limpia solicitada
+        pipeline.add(Document.parse("""
                 {
                     $project: {
                         necesidadId: '$_id',
@@ -78,17 +126,16 @@ public class NecesidadAnalyticsService {
                         tipoNecesidad: 1,
                         productoId: 1,
                         nombreProducto: 1,
-                        categoriaProducto: 1,
-                        subcategoriaProducto: 1,
+                        categoriaProducto: '$categoriaProductoResuelta',
+                        subcategoriaProducto: '$subcategoriaProductoResuelta',
                         cantidadObjetivo: 1,
                         cantidadRecibida: 1,
                         cantidadFaltante: { $subtract: ['$cantidadObjetivo', '$cantidadRecibida'] },
                         stockPorDeposito: { $ifNull: ['$infoProducto.depositosStock', []] },
-                        asignacionesPendientes: { $ifNull: ['$asignacionesPendientes', []] }
+                        asignacionesPendientes: '$asignacionesPendientesResueltas'
                     }
                 }
-                """)
-        );
+                """));
 
         // Ejecutamos la agregación cruda y devolvemos la lista de documentos
         return mongoTemplate.getCollection("necesidades")

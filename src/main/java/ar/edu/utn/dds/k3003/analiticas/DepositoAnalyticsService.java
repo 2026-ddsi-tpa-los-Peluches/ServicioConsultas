@@ -19,15 +19,74 @@ public class DepositoAnalyticsService {
 
     public DepositoReporteDTO obtenerReporteDeposito(String depositoId, Instant fechaInicio, Instant fechaFin) {
 
+        // $match con Document (no interpolado) para no armar el filtro a partir de un String con el ID.
+        Document matchStage = new Document("$match", new Document("_id", depositoId));
+
+        // Traemos las asignaciones del depósito para recalcular los agregados por estado y por entidad
+        // a partir de la fuente de verdad (colección "asignaciones"), en vez de confiar en contadores
+        // que solo se incrementaban y nunca se corregían al cambiar de estado.
+        Document lookupAsignaciones = Document.parse("""
+                { $lookup: {
+                    from: 'asignaciones',
+                    localField: '_id',
+                    foreignField: 'depositoId',
+                    as: 'asignacionesDeposito'
+                } }
+                """);
+
+        Document addFieldsAgregados = Document.parse("""
+                { $addFields: {
+                    cantidadAsignacionesPorEstado: {
+                        $arrayToObject: {
+                            $map: {
+                                input: { $setUnion: ['$asignacionesDeposito.estado', []] },
+                                as: 'estado',
+                                in: {
+                                    k: '$$estado',
+                                    v: {
+                                        $size: {
+                                            $filter: {
+                                                input: '$asignacionesDeposito',
+                                                as: 'a',
+                                                cond: { $eq: ['$$a.estado', '$$estado'] }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    cantidadDeEntidadesDistintasAtendidas: {
+                        $size: {
+                            $setUnion: [
+                                {
+                                    $map: {
+                                        input: {
+                                            $filter: {
+                                                input: '$asignacionesDeposito',
+                                                as: 'a',
+                                                cond: { $eq: ['$$a.estado', 'COMPLETADA'] }
+                                            }
+                                        },
+                                        as: 'a',
+                                        in: '$$a.entidadId'
+                                    }
+                                },
+                                []
+                            ]
+                        }
+                    }
+                } }
+                """);
+
         String projectJson = "{ $project: {" +
                 "  nombre: 1," +
                 "  direccion: 1," +
                 "  algoritmoMatchmaking: 1," +
                 "  capacidadMaxima: 1," +
-                "  stockTotal: 1," +
+                "  stockTotal: { $ifNull: ['$stockTotal', 0] }," +
                 "  cantidadAsignacionesPorEstado: 1," +
                 "  cantidadDeEntidadesDistintasAtendidas: 1," +
-                "  entidadesAtendidas: 1," +
                 "  ocupacionPorcentaje: {" +
                 "    $cond: {" +
                 "      if: { $gt: ['$capacidadMaxima', 0] }," +
@@ -64,7 +123,9 @@ public class DepositoAnalyticsService {
 
         // 1. Armamos el pipeline con los Strings limpios
         List<Document> pipeline = List.of(
-                Document.parse("{ $match: { _id: '" + depositoId + "' } }"),
+                matchStage,
+                lookupAsignaciones,
+                addFieldsAgregados,
                 Document.parse(projectJson),
                 Document.parse(addFieldsJson)
         );

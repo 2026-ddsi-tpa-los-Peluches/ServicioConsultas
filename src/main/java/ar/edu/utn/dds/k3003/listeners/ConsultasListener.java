@@ -40,6 +40,7 @@ import org.springframework.stereotype.Component;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.List;
 
 @Component
 public class ConsultasListener {
@@ -64,6 +65,13 @@ public class ConsultasListener {
 
         Query query = new Query(Criteria.where("donadorId").is(donadorIdStr));
 
+        // La categoría de alta también es parte del historial: si no la sembramos acá, el donador
+        // que nunca cambió de categoría queda con historialCategorias en null, y al que sí cambió
+        // le falta la categoría inicial.
+        DonadorDoc.CategoriaHistoricaDoc categoriaInicial = new DonadorDoc.CategoriaHistoricaDoc();
+        categoriaInicial.setCategoria(e.getCategoria());
+        categoriaInicial.setFecha(e.getFechaEvento());
+
         Update update = new Update()
                 .set("donadorId", donadorIdStr)
                 .set("nombre", e.getNombre())
@@ -73,7 +81,10 @@ public class ConsultasListener {
                 .set("nroDocumento", e.getNroDocumento())
                 .set("domicilio", e.getDomicilio())
                 .set("estado", e.getEstado())
-                .set("categoriaActual", e.getCategoria());
+                .set("categoriaActual", e.getCategoria())
+                // setOnInsert: solo se siembra la primera vez, para no duplicarla si el evento
+                // de alta llega más de una vez (idempotencia del upsert).
+                .setOnInsert("historialCategorias", List.of(categoriaInicial));
 
         // Upsert: si no existe el documento del donador en Mongo, lo crea con estos datos base;
         // si ya existiera por algún motivo, actualiza sus datos personales.

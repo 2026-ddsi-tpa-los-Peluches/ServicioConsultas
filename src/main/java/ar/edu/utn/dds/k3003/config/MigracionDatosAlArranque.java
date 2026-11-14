@@ -31,6 +31,7 @@ public class MigracionDatosAlArranque implements ApplicationRunner {
     public void run(ApplicationArguments args) {
         ejecutar("depositos", this::migrarDepositos);
         ejecutar("insignias de donadores", this::migrarInsigniasDeDonadores);
+        ejecutar("historial de categorías de donadores", this::migrarHistorialCategoriasDeDonadores);
     }
 
     private void ejecutar(String nombre, Runnable paso) {
@@ -101,6 +102,35 @@ public class MigracionDatosAlArranque implements ApplicationRunner {
                         new Document("$set", new Document("insignias", nuevas)));
                 log.info("Donador {}: insignias en formato viejo convertidas", donador.get("_id"));
             }
+        }
+    }
+
+    // historialCategorias siempre tiene que incluir la categoría de alta: antes de este fix
+    // onDonadorCreado no la guardaba, así que los donadores que ya existían en Mongo quedaron con
+    // historialCategorias en null (si nunca cambiaron de categoría) o sin la categoría inicial (si
+    // cambiaron). No tenemos la fecha de alta real guardada, así que usamos la mejor fecha
+    // disponible (la del último cambio de categoría o de estado) y, a falta de eso, la fecha actual.
+    private void migrarHistorialCategoriasDeDonadores() {
+        MongoCollection<Document> donadores = mongo.getCollection("donadores");
+
+        Document sinHistorial = new Document("$or", List.of(
+                new Document("historialCategorias", new Document("$exists", false)),
+                new Document("historialCategorias", null),
+                new Document("historialCategorias", new Document("$size", 0))));
+
+        for (Document donador : donadores.find(sinHistorial)) {
+            Object categoriaActual = donador.get("categoriaActual");
+            if (categoriaActual == null) continue;
+
+            Object fecha = donador.get("categoriaActualizadaEn");
+            if (fecha == null) fecha = donador.get("estadoActualizadoEn");
+            if (fecha == null) fecha = java.time.Instant.now();
+
+            Document entradaInicial = new Document("categoria", categoriaActual).append("fecha", fecha);
+
+            donadores.updateOne(new Document("_id", donador.get("_id")),
+                    new Document("$set", new Document("historialCategorias", List.of(entradaInicial))));
+            log.info("Donador {}: historialCategorias inicializado con la categoría de alta", donador.get("_id"));
         }
     }
 

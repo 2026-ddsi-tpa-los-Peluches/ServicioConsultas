@@ -18,9 +18,43 @@ public class DonadorAnalyticsService {
 
     public DonadorDoc obtenerReporteDonador(String donadorId) {
 
-        // Armamos un pipeline de agregación sencillo con $match por ID del donador
+        // Armamos el pipeline de agregación: $match por ID del donador (con Document, no interpolado)
+        // y recalculamos cantidadesPorEstado desde la colección "donaciones" en vez de confiar en el
+        // contador que el listener solo incrementaba (nunca bajaba el estado anterior al cambiar).
         List<Document> pipeline = List.of(
-                Document.parse("{ $match: { _id: '" + donadorId + "' } }")
+                new Document("$match", new Document("_id", donadorId)),
+                Document.parse("""
+                        { $lookup: {
+                            from: 'donaciones',
+                            localField: '_id',
+                            foreignField: 'donadorId',
+                            as: 'donacionesDelDonador'
+                        } }
+                        """),
+                Document.parse("""
+                        { $addFields: {
+                            cantidadesPorEstado: {
+                                $arrayToObject: {
+                                    $map: {
+                                        input: { $setUnion: ['$donacionesDelDonador.estado', []] },
+                                        as: 'estado',
+                                        in: {
+                                            k: '$$estado',
+                                            v: {
+                                                $size: {
+                                                    $filter: {
+                                                        input: '$donacionesDelDonador',
+                                                        as: 'd',
+                                                        cond: { $eq: ['$$d.estado', '$$estado'] }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        } }
+                        """)
         );
 
         // Ejecutamos el aggregate crudo sobre la colección "donadores"
