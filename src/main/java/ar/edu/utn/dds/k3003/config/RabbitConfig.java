@@ -27,7 +27,7 @@ public class RabbitConfig {
 
                 //DONADOR
                 "donador-creado" ,"donador-estado", "donador-incentivos", "donador-categoria",
-                "mision-donador-completada","mision-donador-limpliada", "mision-donador-progreso",
+                "mision-donador-completada","mision-donador-limpiada", "mision-donador-progreso",
                 "insignia-donador-agregada", "insignia-donador-quitada",
                 "donador-donacion-estado", "donador-queja-registrada", "donador-entidad-donada",
                 "donador-mision-asignar",

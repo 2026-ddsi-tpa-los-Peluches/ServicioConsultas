@@ -1,7 +1,8 @@
 package ar.edu.utn.dds.k3003.controllers.Donaciones;
 
-import ar.edu.utn.dds.k3003.dtos.donaciones.CategoriaDTO;
-import ar.edu.utn.dds.k3003.service.ServiceCategoria;
+import ar.edu.utn.dds.k3003.dtos.donaciones.SubCategoriaDTO;
+import ar.edu.utn.dds.k3003.service.ServiceSubCategoria;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -9,26 +10,26 @@ import java.util.List;
 import java.util.NoSuchElementException;
 
 @RestController
-@RequestMapping("/subCategoria")
+@RequestMapping("/subcategorias")
 public class SubCategoriaController {
 
-    private final ServiceCategoria serviceCategoria;
+    private final ServiceSubCategoria serviceSubCategoria;
 
-    public SubCategoriaController(ServiceCategoria serviceCategoria) {
-        this.serviceCategoria = serviceCategoria;
+    public SubCategoriaController(ServiceSubCategoria serviceSubCategoria) {
+        this.serviceSubCategoria = serviceSubCategoria;
     }
 
     @GetMapping
-    public ResponseEntity<List<CategoriaDTO>> obtenerCategorias() {
-        return ResponseEntity.ok(serviceCategoria.obtenerTodas());
+    public ResponseEntity<List<SubCategoriaDTO>> obtenerSubCategorias() {
+        return ResponseEntity.ok(serviceSubCategoria.obtenerTodas());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<CategoriaDTO> obtenerCategoria(@PathVariable String id) {
+    public ResponseEntity<?> obtenerSubCategoria(@PathVariable String id) {
         try {
-            return ResponseEntity.ok(serviceCategoria.buscarPorId(id));
+            return ResponseEntity.ok(serviceSubCategoria.buscarPorId(id));
         } catch (NoSuchElementException e) {
-            return ResponseEntity.notFound().build();
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
         }
     }
 }
