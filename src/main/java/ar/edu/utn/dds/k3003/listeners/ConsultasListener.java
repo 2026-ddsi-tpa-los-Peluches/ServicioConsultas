@@ -208,15 +208,26 @@ public class ConsultasListener {
 
     @RabbitListener(queues = "consultas.donador-donacion-estado")
     public void onDonadorDonacionEstado(ActualizarCantidadDonacionesEstadoEvent evento) {
-
-        // Apunta al campo del mapa dentro del documento, ej: "cantidadesPorEstado.INGRESADA"
-        String campoEstado = "cantidadesPorEstado." + evento.estado();
-
         Query query = new Query(Criteria.where("donadorId").is(evento.donadorID()));
-        Update update = new Update().inc(campoEstado, 1);
 
-        // upsert asegura que si el documento del donador no tiene inicializado el mapa o no existe en la vista, lo genere de forma atómica
+        Update update = new Update();
+
+        // 1. Si hay un estado anterior (es una transición), restamos 1 al viejo
+        if (evento.estadoAnterior() != null) {
+            String campoEstadoAnterior = "cantidadesPorEstado." + evento.estadoAnterior();
+            update.inc(campoEstadoAnterior, -1L);
+        }
+
+        // 2. Sumamos 1 al estado nuevo (aplica tanto si es inicial como si es el nuevo estado de la transición)
+        String campoEstadoNuevo = "cantidadesPorEstado." + evento.estadoNuevo(); // o evento.estado() según cómo lo tengas en tu evento
+        update.inc(campoEstadoNuevo, 1L);
+
+        update.set("ultimaActualizacion", Instant.now());
+
+        // 3. Upsert atómico: si el donador no existe en Mongo, crea el documento y arma el mapa con el primer estado
         mongo.upsert(query, update, DonadorDoc.class);
+
+        System.out.println(" [x] Cantidades por estado actualizadas para el donador ID: " + evento.donadorID());
     }
 
 
